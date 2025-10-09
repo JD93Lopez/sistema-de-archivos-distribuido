@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -161,6 +162,11 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     public void ejecutarTareaEnHilo(Tarea tarea) throws java.rmi.RemoteException {
         colaTareas.offer(tarea);
         System.out.println("Tarea personalizada encolada: " + tarea.getDescripcion());
+    }
+
+    @Override
+    public void ping() throws RemoteException {
+        // System.out.println("Ping recibido");
     }
 
 }
