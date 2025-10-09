@@ -48,13 +48,9 @@ public class ServidorAplicacion {
     }
 
     public Archivo descargarArchivo(String nombre) {
-        
-        Archivo archivoTemp = new Archivo(nombre, "", new byte[0]);
-        Solicitud solicitud = new Solicitud(TipoSolicitud.LEER, archivoTemp, new ArrayList<>());
-        colaSolicitudes.offer(solicitud);
-        System.out.println("Solicitud de lectura encolada para: " + nombre);
-        
-        return null;
+        System.out.println("Solicitud de descarga para: " + nombre);
+        // Procesar directamente en lugar de encolar
+        return procesarLeerArchivo(nombre);
     }
 
     public void moverArchivo(String origen, String destino) {
@@ -231,18 +227,28 @@ public class ServidorAplicacion {
 
     private Archivo procesarLeerArchivo(String nombre) {
         try {
+            // Buscar el archivo en la base de datos
             List<Archivo> archivos = servidorBaseDatos.consultarArchivosUsuario(1);
             Archivo archivo = archivos.stream()
                 .filter(a -> a.getNombre().equals(nombre))
                 .findFirst()
-                .orElseThrow(() -> new Exception("Archivo no encontrado"));
+                .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos"));
 
+            // Construir la ruta completa para el nodo
+            String rutaCompleta = archivo.getRuta() + "/" + archivo.getNombre();
+            
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);
             InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
             
-            return nodo.leerArchivo(archivo.getRuta() + "/" + archivo.getNombre());
+            // Leer el archivo desde el nodo
+            Archivo archivoLeido = nodo.leerArchivo(rutaCompleta);
+            
+            System.out.println("Archivo descargado exitosamente: " + archivo.getNombre());
+            return archivoLeido;
+            
         } catch (Exception e) {
             System.err.println("Error al leer el archivo: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
