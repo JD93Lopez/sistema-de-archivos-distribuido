@@ -1,4 +1,5 @@
 package central;
+
 import java.io.Serializable;
 
 public class Archivo implements Serializable {
@@ -17,11 +18,6 @@ public class Archivo implements Serializable {
         this.ruta = ruta;
         this.contenido = contenido;
     }
-
-    // public Archivo(String nombre, byte[] contenido) {
-    //     this.nombre = nombre;
-    //     this.contenido = contenido;
-    // }
 
     public int getId() {
         return id;
@@ -62,4 +58,18 @@ public class Archivo implements Serializable {
     public void setIdUsuario(int idUsuario) {
         this.idUsuario = idUsuario;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder stringFile = new StringBuilder();
+        stringFile.append("{");
+        stringFile.append("id:").append(id).append(",");
+        stringFile.append("nombre:").append(nombre != null ? nombre : "").append(",");
+        stringFile.append("ruta:").append(ruta != null ? ruta : "").append(",");
+        stringFile.append("contenido:").append(contenido != null ? javax.xml.bind.DatatypeConverter.printBase64Binary(contenido) : "").append(",");
+        stringFile.append("idUsuario:").append(idUsuario);
+        stringFile.append("}");
+        return stringFile.toString();
+    }
+
 }

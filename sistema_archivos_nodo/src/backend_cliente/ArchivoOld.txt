@@ -2,7 +2,7 @@ package backend_cliente;
 
 import java.io.Serializable;
 
-public class Archivo implements Serializable {
+private class Archivo implements Serializable {
 
     private int id;
     private String nombre;

@@ -1,6 +1,7 @@
 package backend_cliente;
 
 import java.util.*;
+import central.ArbolEspacio;
 
 public class JsonParser {
 

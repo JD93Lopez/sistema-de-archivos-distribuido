@@ -10,6 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import central.Archivo;
+import central.ArbolEspacio;
+import central.NodoArbol;
+
 public class XmlResponseParser {
 
     public static String extractToken(String soapResponse) {
