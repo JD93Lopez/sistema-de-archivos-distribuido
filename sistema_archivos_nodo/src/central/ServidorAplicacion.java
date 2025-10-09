@@ -1,7 +1,5 @@
 package central;
 
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -21,18 +19,19 @@ public class ServidorAplicacion {
     private ServidorBaseDatos servidorBaseDatos;
     private ExecutorService executorService;
     private volatile boolean running;
+    private RegistroNodos registroNodos;
 
     public ServidorAplicacion() {
         this.colaSolicitudes = new LinkedBlockingQueue<>();
         this.servidorBaseDatos = new ServidorBaseDatos();
-        this.executorService = Executors.newFixedThreadPool(2); 
+        this.executorService = Executors.newFixedThreadPool(2);
         this.running = true;
-        
+        this.registroNodos = new RegistroNodos();
+
         executorService.submit(this::coordinarNodos);
     }
 
     public void crearDirectorio(String ruta) {
-        
         System.out.println("Crear directorio llamado: " + ruta);
         Archivo archivoTemp = new Archivo("directorio", ruta, new byte[0]);
         Solicitud solicitud = new Solicitud(TipoSolicitud.CREAR_DIRECTORIO, archivoTemp, new ArrayList<>());
@@ -41,24 +40,17 @@ public class ServidorAplicacion {
     }
 
     public void subirArchivo(Archivo archivo) {
-        
         Solicitud solicitud = new Solicitud(TipoSolicitud.ALMACENAR, archivo, new ArrayList<>());
         colaSolicitudes.offer(solicitud);
         System.out.println("Solicitud de almacenamiento encolada para: " + archivo.getNombre());
     }
 
     public Archivo descargarArchivo(String nombre) {
-        
-        Archivo archivoTemp = new Archivo(nombre, "", new byte[0]);
-        Solicitud solicitud = new Solicitud(TipoSolicitud.LEER, archivoTemp, new ArrayList<>());
-        colaSolicitudes.offer(solicitud);
-        System.out.println("Solicitud de lectura encolada para: " + nombre);
-        
-        return null;
+        System.out.println("Solicitud de descarga para: " + nombre);
+        return procesarLeerArchivo(nombre);
     }
 
     public void moverArchivo(String origen, String destino) {
-        
         Archivo archivoTemp = new Archivo("temp", origen, new byte[0]);
         Solicitud solicitud = new Solicitud(TipoSolicitud.MOVER, archivoTemp, new ArrayList<>());
         colaSolicitudes.offer(solicitud);
@@ -66,7 +58,6 @@ public class ServidorAplicacion {
     }
 
     public void eliminarArchivo(String nombre) {
-        
         Archivo archivoTemp = new Archivo(nombre, "", new byte[0]);
         Solicitud solicitud = new Solicitud(TipoSolicitud.ELIMINAR, archivoTemp, new ArrayList<>());
         colaSolicitudes.offer(solicitud);
@@ -74,7 +65,6 @@ public class ServidorAplicacion {
     }
 
     public void compartirArchivo(Archivo archivo, Usuario usuario) {
-        
         List<Usuario> usuarios = new ArrayList<>();
         usuarios.add(usuario);
         Solicitud solicitud = new Solicitud(TipoSolicitud.COMPARTIR, archivo, usuarios);
@@ -84,7 +74,7 @@ public class ServidorAplicacion {
     }
 
     public ArbolEspacio consultarEspacioConsumido() {
-        ArbolEspacio arbolEspacio = new ArbolEspacio(1_000_000_000L);//hardcodeado 1GB
+        ArbolEspacio arbolEspacio = new ArbolEspacio(1_000_000_000L);
 
         String query = "SELECT nombre, ruta, tamano FROM Archivo";
         try (Connection conn = ConexionDB.getConnection();
@@ -95,7 +85,6 @@ public class ServidorAplicacion {
                 String nombre = rs.getString("nombre");
                 String ruta = rs.getString("ruta");
                 long tamano = rs.getLong("tamano");
-                
                 arbolEspacio.agregarArchivo(ruta + "/" + nombre, tamano);
             }
         } catch (SQLException e) {
@@ -103,7 +92,6 @@ public class ServidorAplicacion {
             return null;
         }
 
-        
         arbolEspacio.calcularEspacioUsado();
         return arbolEspacio;
     }
@@ -112,10 +100,7 @@ public class ServidorAplicacion {
         while (running) {
             try {
                 Solicitud solicitud = ((LinkedBlockingQueue<Solicitud>) colaSolicitudes).take();
-                
                 System.out.println("Procesando solicitud: " + solicitud);
-                
-                // Procesar la solicitud según su tipo
                 switch (solicitud.getTipo()) {
                     case CREAR_DIRECTORIO:
                         procesarCrearDirectorio(solicitud.getArchivo().getRuta());
@@ -138,7 +123,6 @@ public class ServidorAplicacion {
                         }
                         break;
                 }
-                
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -152,42 +136,32 @@ public class ServidorAplicacion {
     private void procesarCrearDirectorio(String ruta) {
         try {
             System.out.println("Creando directorio en ruta: " + ruta);
-            
-            int idUsuario = 1; // Hardcodeado TODO cambiar
-            System.out.println("Usuario ID para crear directorio: " + idUsuario);
-            
+            int idUsuario = 1;
             int idDirectorioUsuario = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
-            System.out.println("Directorio base del usuario ID: " + idDirectorioUsuario);
-            
             String[] partesRuta = ruta.split("/");
             String nombreDirectorio = partesRuta[partesRuta.length - 1];
-            
             int idDirectorioPadre = idDirectorioUsuario;
-            
+
             if (partesRuta.length > 2) {
                 String rutaPadre = ruta.substring(0, ruta.lastIndexOf("/"));
                 if (!rutaPadre.isEmpty()) {
                     String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
                     String rutaPadreCompleta = "/" + nombreUsuario + rutaPadre;
-                    
                     int idPadreExistente = servidorBaseDatos.obtenerIdDirectorioPorRuta(rutaPadreCompleta, idUsuario);
                     if (idPadreExistente != -1) {
                         idDirectorioPadre = idPadreExistente;
                     }
                 }
             }
-            
+
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaCompleta = "/" + nombreUsuario + ruta;
-            
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
+
+            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
             nodo.crearDirectorio(rutaCompleta);
-            
+
             servidorBaseDatos.guardarDirectorio(nombreDirectorio, ruta, idUsuario, idDirectorioPadre);
-            
             System.out.println("Directorio creado exitosamente en el nodo y base de datos: " + rutaCompleta);
-            
         } catch (Exception e) {
             System.err.println("Error al crear directorio: " + e.getMessage());
             e.printStackTrace();
@@ -196,14 +170,12 @@ public class ServidorAplicacion {
 
     private void procesarAlmacenarArchivo(Archivo archivo) {
         try {
-            int idUsuario = 1; // TODO
-            
+            int idUsuario = 1;
             servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
-            
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaOriginal = archivo.getRuta();
             String rutaCompleta;
-            
+
             if (rutaOriginal.startsWith("/")) {
                 if (!rutaOriginal.startsWith("/" + nombreUsuario)) {
                     rutaCompleta = "/" + nombreUsuario + rutaOriginal;
@@ -213,13 +185,11 @@ public class ServidorAplicacion {
             } else {
                 rutaCompleta = "/" + nombreUsuario + "/" + rutaOriginal;
             }
-            
+
             Archivo archivoConRutaCompleta = new Archivo(archivo.getNombre(), rutaCompleta, archivo.getContenido());
-            
             servidorBaseDatos.guardarArchivo(archivoConRutaCompleta, idUsuario);
 
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
+            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
             nodo.almacenarArchivo(archivoConRutaCompleta);
 
             System.out.println("Archivo almacenado exitosamente: " + archivo.getNombre() + " en ruta: " + rutaCompleta);
@@ -235,24 +205,26 @@ public class ServidorAplicacion {
             Archivo archivo = archivos.stream()
                 .filter(a -> a.getNombre().equals(nombre))
                 .findFirst()
-                .orElseThrow(() -> new Exception("Archivo no encontrado"));
+                .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos"));
 
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
-            
-            return nodo.leerArchivo(archivo.getRuta() + "/" + archivo.getNombre());
+            String rutaCompleta = archivo.getRuta() + "/" + archivo.getNombre();
+
+            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
+            Archivo archivoLeido = nodo.leerArchivo(rutaCompleta);
+
+            System.out.println("Archivo descargado exitosamente: " + archivo.getNombre());
+            return archivoLeido;
         } catch (Exception e) {
             System.err.println("Error al leer el archivo: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
 
     private void procesarMoverArchivo(String origen, String destino) {
         try {
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
+            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
             nodo.moverArchivo(origen, destino);
-
             System.out.println("Archivo movido exitosamente de " + origen + " a " + destino);
         } catch (Exception e) {
             System.err.println("Error al mover el archivo: " + e.getMessage());
@@ -266,8 +238,7 @@ public class ServidorAplicacion {
                 servidorBaseDatos.eliminarArchivo(idArchivo);
             }
 
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
+            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
             nodo.eliminarArchivo(nombre);
 
             System.out.println("Archivo eliminado exitosamente: " + nombre);
@@ -278,15 +249,11 @@ public class ServidorAplicacion {
 
     private void procesarCompartirArchivo(Archivo archivo, Usuario usuario) {
         try {
-            
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
-            InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
+            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
             nodo.compartirArchivo(archivo, usuario);
-
             System.out.println("Archivo compartido exitosamente con el usuario: " + usuario.getNombre());
         } catch (Exception e) {
             System.err.println("Error al compartir el archivo: " + e.getMessage());
         }
     }
-
 }

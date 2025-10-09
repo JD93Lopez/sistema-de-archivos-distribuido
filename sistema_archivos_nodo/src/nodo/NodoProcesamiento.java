@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,7 +23,7 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
 
     public NodoProcesamiento() throws Exception {
         super();
-        this.directorioRaiz = "C:\\Users\\juand\\Desktop\\Code\\Distribuidos\\sistema_archivos_nodo\\src\\out\\almacenamiento";
+        this.directorioRaiz = "C:\\Users\\juand\\Desktop\\Code\\Distribuidos\\sistema-de-archivos-distribuido\\sistema_archivos_nodo\\src\\out\\almacenamiento";
         this.poolHilos = Executors.newFixedThreadPool(NUMERO_HILOS);
         this.colaTareas = new PriorityBlockingQueue<>(100, Comparator.comparingInt(Tarea::getPrioridad).reversed());
         
@@ -115,9 +116,30 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     public Archivo leerArchivo(String nombre) throws java.rmi.RemoteException {
         try {
             Path rutaCompleta = Paths.get(directorioRaiz, nombre);
-            System.out.println("Leyendo archivo: " + rutaCompleta);
-            return new Archivo();
+            System.out.println("Leyendo archivo desde: " + rutaCompleta);
+            
+            if (!Files.exists(rutaCompleta)) {
+                throw new java.rmi.RemoteException("El archivo no existe: " + rutaCompleta);
+            }
+            
+            // Leer el contenido del archivo
+            byte[] contenido = Files.readAllBytes(rutaCompleta);
+            
+            // Extraer solo el nombre del archivo (sin la ruta)
+            String nombreArchivo = rutaCompleta.getFileName().toString();
+            
+            // Extraer la ruta del directorio
+            String rutaDirectorio = rutaCompleta.getParent().toString().replace(directorioRaiz, "");
+            if (rutaDirectorio.startsWith("\\") || rutaDirectorio.startsWith("/")) {
+                rutaDirectorio = rutaDirectorio.substring(1);
+            }
+            
+            Archivo archivo = new Archivo(nombreArchivo, rutaDirectorio, contenido);
+            System.out.println("Archivo leído exitosamente: " + nombreArchivo + " (" + contenido.length + " bytes)");
+            
+            return archivo;
         } catch (Exception e) {
+            System.err.println("Error al leer el archivo: " + e.getMessage());
             throw new java.rmi.RemoteException("Error al leer el archivo: " + e.getMessage());
         }
     }
@@ -140,6 +162,11 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     public void ejecutarTareaEnHilo(Tarea tarea) throws java.rmi.RemoteException {
         colaTareas.offer(tarea);
         System.out.println("Tarea personalizada encolada: " + tarea.getDescripcion());
+    }
+
+    @Override
+    public void ping() throws RemoteException {
+        // System.out.println("Ping recibido");
     }
 
 }

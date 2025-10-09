@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cen="http://central/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <cen:descargarArchivo>
+         <nombre>documento.txt</nombre>
+         <token>TOKEN_PLACEHOLDER</token>
+      </cen:descargarArchivo>
+   </soapenv:Body>
+</soapenv:Envelope>

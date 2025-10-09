@@ -11,4 +11,6 @@ public interface InterfazRMI extends Remote {
     void moverArchivo(String origen, String destino) throws RemoteException;
     void eliminarArchivo(String nombre) throws RemoteException;
     void compartirArchivo(Archivo archivo, Usuario usuario) throws RemoteException;
+
+    void ping() throws RemoteException;
 }
