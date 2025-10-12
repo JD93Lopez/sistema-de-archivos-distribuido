@@ -202,18 +202,16 @@ public class ServidorBaseDatos {
     }
 
     public int obtenerIdDirectorioRaiz(int idUsuario) throws SQLException {
-        String query = "SELECT idDirectorio FROM Directorio WHERE User_idUser = ? AND idPadre IS NULL LIMIT 1";
+        String query = "SELECT idDirectorio FROM Directorio WHERE idPadre IS NULL LIMIT 1";
         
         try (Connection conn = ConexionDB.getConnection();
             PreparedStatement stmt = conn.prepareStatement(query)) {
-            
-            stmt.setInt(1, idUsuario);
             
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt("idDirectorio");
             } else {
-                return crearDirectorioRaiz(idUsuario);
+                return crearDirectorioRaiz(1);
             }
         } catch (SQLException e) {
             e.printStackTrace();
