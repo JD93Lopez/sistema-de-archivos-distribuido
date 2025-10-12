@@ -2,6 +2,7 @@ package backend_cliente;
 
 import java.util.*;
 import central.ArbolEspacio;
+import central.NodoArbol;
 
 public class JsonParser {
 

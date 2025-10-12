@@ -31,9 +31,10 @@ public class ServidorAplicacion {
         executorService.submit(this::coordinarNodos);
     }
 
-    public void crearDirectorio(String ruta) {
+    public void crearDirectorio(String ruta, int idUsuario) {
         System.out.println("Crear directorio llamado: " + ruta);
         Archivo archivoTemp = new Archivo("directorio", ruta, new byte[0]);
+        archivoTemp.setIdUsuario(idUsuario);
         Solicitud solicitud = new Solicitud(TipoSolicitud.CREAR_DIRECTORIO, archivoTemp, new ArrayList<>());
         colaSolicitudes.offer(solicitud);
         System.out.println("Solicitud de crear directorio encolada para: " + ruta);
@@ -45,20 +46,22 @@ public class ServidorAplicacion {
         System.out.println("Solicitud de almacenamiento encolada para: " + archivo.getNombre());
     }
 
-    public Archivo descargarArchivo(String nombre) {
+    public Archivo descargarArchivo(String nombre, int idUsuario) {
         System.out.println("Solicitud de descarga para: " + nombre);
-        return procesarLeerArchivo(nombre);
+        return procesarLeerArchivo(nombre, idUsuario);
     }
 
-    public void moverArchivo(String origen, String destino) {
+    public void moverArchivo(String origen, String destino, int idUsuario) {
         Archivo archivoTemp = new Archivo("temp", origen, new byte[0]);
+        archivoTemp.setIdUsuario(idUsuario);
         Solicitud solicitud = new Solicitud(TipoSolicitud.MOVER, archivoTemp, new ArrayList<>());
         colaSolicitudes.offer(solicitud);
         System.out.println("Solicitud de mover archivo encolada de " + origen + " a " + destino);
     }
 
-    public void eliminarArchivo(String nombre) {
+    public void eliminarArchivo(String nombre, int idUsuario) {
         Archivo archivoTemp = new Archivo(nombre, "", new byte[0]);
+        archivoTemp.setIdUsuario(idUsuario);
         Solicitud solicitud = new Solicitud(TipoSolicitud.ELIMINAR, archivoTemp, new ArrayList<>());
         colaSolicitudes.offer(solicitud);
         System.out.println("Solicitud de eliminación encolada para: " + nombre);
@@ -73,13 +76,15 @@ public class ServidorAplicacion {
                           " con usuario: " + usuario.getNombre());
     }
 
-    public ArbolEspacio consultarEspacioConsumido() {
+    public ArbolEspacio consultarEspacioConsumido(int idUsuario) {
         ArbolEspacio arbolEspacio = new ArbolEspacio(1_000_000_000L);
 
-        String query = "SELECT nombre, ruta, tamano FROM Archivo";
+        String query = "SELECT nombre, ruta, tamano FROM Archivo WHERE Directorio_User_idUser = ?";
         try (Connection conn = ConexionDB.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, idUsuario);
+            ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
                 String nombre = rs.getString("nombre");
@@ -103,19 +108,19 @@ public class ServidorAplicacion {
                 System.out.println("Procesando solicitud: " + solicitud);
                 switch (solicitud.getTipo()) {
                     case CREAR_DIRECTORIO:
-                        procesarCrearDirectorio(solicitud.getArchivo().getRuta());
+                        procesarCrearDirectorio(solicitud.getArchivo().getRuta(), solicitud.getArchivo());
                         break;
                     case ALMACENAR:
                         procesarAlmacenarArchivo(solicitud.getArchivo());
                         break;
                     case LEER:
-                        procesarLeerArchivo(solicitud.getArchivo().getNombre());
+                        procesarLeerArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
                         break;
                     case MOVER:
                         procesarMoverArchivo(solicitud.getArchivo().getRuta(), "/nuevo/destino");
                         break;
                     case ELIMINAR:
-                        procesarEliminarArchivo(solicitud.getArchivo().getNombre());
+                        procesarEliminarArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
                         break;
                     case COMPARTIR:
                         if (!solicitud.getUsuarios().isEmpty()) {
@@ -133,10 +138,10 @@ public class ServidorAplicacion {
         }
     }
 
-    private void procesarCrearDirectorio(String ruta) {
+    private void procesarCrearDirectorio(String ruta, Archivo archivo) {
         try {
             System.out.println("Creando directorio en ruta: " + ruta);
-            int idUsuario = 1;
+            int idUsuario = archivo.getIdUsuario();
             int idDirectorioUsuario = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
             String[] partesRuta = ruta.split("/");
             String nombreDirectorio = partesRuta[partesRuta.length - 1];
@@ -170,7 +175,7 @@ public class ServidorAplicacion {
 
     private void procesarAlmacenarArchivo(Archivo archivo) {
         try {
-            int idUsuario = 1;
+            int idUsuario = archivo.getIdUsuario();
             servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaOriginal = archivo.getRuta();
@@ -186,6 +191,17 @@ public class ServidorAplicacion {
                 rutaCompleta = "/" + nombreUsuario + "/" + rutaOriginal;
             }
 
+
+
+            String rutaDirectorio = rutaCompleta;
+
+            String nombreDirectorio = rutaDirectorio.substring(rutaDirectorio.lastIndexOf("/") + 1);
+            int idDirectorioPadre = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
+            servidorBaseDatos.guardarDirectorio(nombreDirectorio, rutaDirectorio, idUsuario, idDirectorioPadre);
+            System.out.println("Directorio creado para el archivo: " + rutaDirectorio);
+
+
+
             Archivo archivoConRutaCompleta = new Archivo(archivo.getNombre(), rutaCompleta, archivo.getContenido());
             servidorBaseDatos.guardarArchivo(archivoConRutaCompleta, idUsuario);
 
@@ -199,9 +215,9 @@ public class ServidorAplicacion {
         }
     }
 
-    private Archivo procesarLeerArchivo(String nombre) {
+    private Archivo procesarLeerArchivo(String nombre, int idUsuario) {
         try {
-            List<Archivo> archivos = servidorBaseDatos.consultarArchivosUsuario(1);
+            List<Archivo> archivos = servidorBaseDatos.consultarArchivosUsuario(idUsuario);
             Archivo archivo = archivos.stream()
                 .filter(a -> a.getNombre().equals(nombre))
                 .findFirst()
@@ -231,17 +247,28 @@ public class ServidorAplicacion {
         }
     }
 
-    private void procesarEliminarArchivo(String nombre) {
+    private void procesarEliminarArchivo(String nombre, int idUsuario) {
         try {
-            int idArchivo = servidorBaseDatos.obtenerIdArchivoPorNombre(nombre);
-            if (idArchivo != -1) {
-                servidorBaseDatos.eliminarArchivo(idArchivo);
+            // Only get files that belong to the specific user
+            List<Archivo> archivos = servidorBaseDatos.consultarArchivosUsuario(idUsuario);
+            Archivo archivo = archivos.stream()
+                .filter(a -> a.getNombre().equals(nombre))
+                .findFirst()
+                .orElse(null);
+            
+            if (archivo != null) {
+                int idArchivo = servidorBaseDatos.obtenerIdArchivoPorNombre(nombre);
+                if (idArchivo != -1) {
+                    servidorBaseDatos.eliminarArchivo(idArchivo);
+                }
+
+                InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
+                nodo.eliminarArchivo(nombre);
+
+                System.out.println("Archivo eliminado exitosamente: " + nombre);
+            } else {
+                System.out.println("Archivo no encontrado o no pertenece al usuario: " + nombre);
             }
-
-            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
-            nodo.eliminarArchivo(nombre);
-
-            System.out.println("Archivo eliminado exitosamente: " + nombre);
         } catch (Exception e) {
             System.err.println("Error al eliminar el archivo: " + e.getMessage());
         }

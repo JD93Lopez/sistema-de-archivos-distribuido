@@ -13,15 +13,11 @@ import backend_cliente.generated.*;
 
 public class Main {
 
-    // Cliente SOAP reutilizable (thread-safe en JAX-WS)
     private static final backend_cliente.generated.ServicioSOAPImpl soapPort = createSoapPort();
 
     private static backend_cliente.generated.ServicioSOAPImpl createSoapPort() {
         ServicioSOAPImplService service = new ServicioSOAPImplService();
         backend_cliente.generated.ServicioSOAPImpl port = service.getServicioSOAPImplPort();
-        // Opcional: configurar timeout
-        // ((BindingProvider) port).getRequestContext().put("javax.xml.ws.client.connectionTimeout", "5000");
-        // ((BindingProvider) port).getRequestContext().put("javax.xml.ws.client.receiveTimeout", "10000");
         return port;
     }
 
