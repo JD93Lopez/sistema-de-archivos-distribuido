@@ -44,8 +44,8 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                     try {
                         Tarea tarea = colaTareas.take();
                         tareasEjecutandose.incrementAndGet();
-                        System.out.println("Procesando tarea: " + tarea.getDescripcion() + " (prioridad: " + tarea.getPrioridad() + ") en hilo: " + Thread.currentThread().getName());
-                        System.out.println("Tareas ejecutándose: " + tareasEjecutandose.get() + ", Tareas pendientes: " + colaTareas.size());
+                        System.out.println("Procesando tarea: " + tarea.getDescripcion() + ") en hilo: " + Thread.currentThread().getName());
+                        System.out.println("Tareas ejecutandose: " + tareasEjecutandose.get() + ", Tareas pendientes: " + colaTareas.size());
                         ejecutarTarea(tarea);
                         System.out.println("Tarea completada: " + tarea.getDescripcion());
                         tareasEjecutandose.decrementAndGet();
