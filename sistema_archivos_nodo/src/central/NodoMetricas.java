@@ -4,11 +4,11 @@ public class NodoMetricas {
     private long espacioDisponible;
     private int cargaTrabajo;
     private long timestampActualizacion;
-    private static final long TIEMPO_EXPIRACION = 1; // 30 segundos
+    private static final long TIEMPO_EXPIRACION = 1;
 
     public NodoMetricas() {
         this.espacioDisponible = 0;
-        this.cargaTrabajo = Integer.MAX_VALUE; // Valor alto por defecto para nodos sin métricas
+        this.cargaTrabajo = Integer.MAX_VALUE;
         this.timestampActualizacion = 0;
     }
 
@@ -50,26 +50,16 @@ public class NodoMetricas {
         this.timestampActualizacion = System.currentTimeMillis();
     }
 
-    /**
-     * Calcula un puntaje de eficiencia del nodo basado en:
-     * - Carga de trabajo (menos es mejor)
-     * - Espacio disponible (más es mejor)
-     * 
-     * @return Un puntaje donde valores más altos indican un nodo más libre
-     */
     public double calcularPuntajeEficiencia() {
         if (estanMetricasExpiradas()) {
-            return 0; // Penalizar nodos con métricas expiradas
+            return 0;
         }
 
-        // Normalizar la carga (invertir para que menos carga = mejor puntaje)
         double puntajeCarga = Math.max(0, 100 - ((cargaTrabajo*100)/5));
         
-        // Normalizar el espacio disponible
         double espacioGB = espacioDisponible / (1024.0 * 1024.0 * 1024.0);
         double puntajeEspacio = Math.min(500, espacioGB);
         
-        // Ponderar: 70% carga, 30% espacio
         return (puntajeCarga * 0.7) + (puntajeEspacio * 0.3);
     }
 

@@ -43,19 +43,19 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         Tarea tarea = colaTareas.take();
-                        tareasEjecutandose.incrementAndGet(); // Incrementar contador al empezar tarea
+                        tareasEjecutandose.incrementAndGet();
                         System.out.println("Procesando tarea: " + tarea.getDescripcion() + " (prioridad: " + tarea.getPrioridad() + ") en hilo: " + Thread.currentThread().getName());
                         System.out.println("Tareas ejecutándose: " + tareasEjecutandose.get() + ", Tareas pendientes: " + colaTareas.size());
                         ejecutarTarea(tarea);
                         System.out.println("Tarea completada: " + tarea.getDescripcion());
-                        tareasEjecutandose.decrementAndGet(); // Decrementar contador al completar tarea
+                        tareasEjecutandose.decrementAndGet();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         break;
                     } catch (Exception e) {
                         System.err.println("Error al ejecutar tarea: " + e.getMessage());
                         e.printStackTrace();
-                        tareasEjecutandose.decrementAndGet(); // Decrementar contador si hay error
+                        tareasEjecutandose.decrementAndGet();
                     }
                 }
             });
@@ -63,8 +63,7 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     private void ejecutarTarea(Tarea tarea) throws Exception {
-        // Simular procesamiento realista con pequeña demora
-        Thread.sleep(100); // 100ms de procesamiento
+        Thread.sleep(200);
         
         switch (tarea.getTipoTarea()) {
             case CREAR_DIRECTORIO:
@@ -80,17 +79,12 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                     fos.write(tarea.getArchivo().getContenido());
                 }
                 System.out.println("Archivo almacenado: " + rutaArchivoCompleta);
-                // Simular escritura más lenta para archivos grandes
-                if (tarea.getArchivo().getContenido().length > 1000) {
-                    Thread.sleep(200); // 200ms adicionales para archivos grandes
-                }
                 break;
                 
             case MOVER:
                 Path rutaOrigen = Paths.get(directorioRaiz, tarea.getRutaOrigen());
                 Path rutaDestino = Paths.get(directorioRaiz, tarea.getRutaDestino());
                 System.out.println("Archivo movido de " + rutaOrigen + " a " + rutaDestino);
-                Thread.sleep(150); // 150ms para operaciones de movimiento
                 break;
                 
             case ELIMINAR:
@@ -136,13 +130,10 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                 throw new java.rmi.RemoteException("El archivo no existe: " + rutaCompleta);
             }
             
-            // Leer el contenido del archivo
             byte[] contenido = Files.readAllBytes(rutaCompleta);
             
-            // Extraer solo el nombre del archivo (sin la ruta)
             String nombreArchivo = rutaCompleta.getFileName().toString();
             
-            // Extraer la ruta del directorio
             String rutaDirectorio = rutaCompleta.getParent().toString().replace(directorioRaiz, "");
             if (rutaDirectorio.startsWith("\\") || rutaDirectorio.startsWith("/")) {
                 rutaDirectorio = rutaDirectorio.substring(1);

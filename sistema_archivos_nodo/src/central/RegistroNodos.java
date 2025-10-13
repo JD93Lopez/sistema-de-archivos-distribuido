@@ -143,16 +143,6 @@ public class RegistroNodos {
             }
         }
         
-        // if (mejorNodo == null) {
-        //     // Fallback al algoritmo round-robin si no se pueden obtener métricas
-        //     System.out.println("No se pudieron obtener métricas, usando Round-Robin como fallback");
-        //     int indice = indiceRoundRobin.getAndIncrement() % infoNodos.size();
-        //     mejorNodo = infoNodos.get(indice);
-        // } else {
-        //     System.out.println(">>> Nodo seleccionado: " + mejorNodo.getNumeroNodo() + 
-        //                      " con puntaje " + String.format("%.2f", mejorPuntaje));
-        // }
-        
         return mejorNodo;
     }
 
