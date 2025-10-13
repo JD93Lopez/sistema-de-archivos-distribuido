@@ -162,11 +162,19 @@ public class ServidorAplicacion {
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaCompleta = "/" + nombreUsuario + ruta;
 
-            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
-            nodo.crearDirectorio(rutaCompleta);
+            // Crear directorio en todos los nodos activos
+            List<InfoNodo> todosLosNodos = registroNodos.obtenerTodosLosNodos();
+            for (InfoNodo nodo : todosLosNodos) {
+                try {
+                    nodo.getInterfazRMI().crearDirectorio(rutaCompleta);
+                    System.out.println("Directorio creado en nodo " + nodo.getNumeroNodo() + ": " + rutaCompleta);
+                } catch (Exception e) {
+                    System.err.println("Error al crear directorio en nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
+                }
+            }
 
             servidorBaseDatos.guardarDirectorio(nombreDirectorio, ruta, idUsuario, idDirectorioPadre);
-            System.out.println("Directorio creado exitosamente en el nodo y base de datos: " + rutaCompleta);
+            System.out.println("Directorio creado exitosamente en base de datos: " + rutaCompleta);
         } catch (Exception e) {
             System.err.println("Error al crear directorio: " + e.getMessage());
             e.printStackTrace();
@@ -191,22 +199,42 @@ public class ServidorAplicacion {
                 rutaCompleta = "/" + nombreUsuario + "/" + rutaOriginal;
             }
 
-
-
             String rutaDirectorio = rutaCompleta;
-
             String nombreDirectorio = rutaDirectorio.substring(rutaDirectorio.lastIndexOf("/") + 1);
             int idDirectorioPadre = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
             servidorBaseDatos.guardarDirectorio(nombreDirectorio, rutaDirectorio, idUsuario, idDirectorioPadre);
             System.out.println("Directorio creado para el archivo: " + rutaDirectorio);
 
+            // Obtener nodo principal
+            InfoNodo nodoPrincipal = registroNodos.obtenerInfoNodoParaTrabajo();
+            
+            // Obtener nodo de respaldo (diferente al principal)
+            InfoNodo nodoRespaldo = registroNodos.obtenerNodoRespaldo(nodoPrincipal.getNumeroNodo());
 
-
+            // Crear archivo con ruta completa
             Archivo archivoConRutaCompleta = new Archivo(archivo.getNombre(), rutaCompleta, archivo.getContenido());
-            servidorBaseDatos.guardarArchivo(archivoConRutaCompleta, idUsuario);
+            
+            // Guardar en base de datos con información de nodos
+            Integer numeroNodoRespaldo = (nodoRespaldo != null) ? nodoRespaldo.getNumeroNodo() : null;
+            servidorBaseDatos.guardarArchivoConNodos(archivoConRutaCompleta, idUsuario, 
+                                                   nodoPrincipal.getNumeroNodo(), numeroNodoRespaldo);
 
-            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
-            nodo.almacenarArchivo(archivoConRutaCompleta);
+            // Almacenar en nodo principal
+            nodoPrincipal.getInterfazRMI().almacenarArchivo(archivoConRutaCompleta);
+            System.out.println("Archivo almacenado en nodo principal " + nodoPrincipal.getNumeroNodo() + ": " + archivo.getNombre());
+
+            // Almacenar en nodo de respaldo si existe
+            if (nodoRespaldo != null) {
+                try {
+                    nodoRespaldo.getInterfazRMI().almacenarArchivo(archivoConRutaCompleta);
+                    System.out.println("Archivo replicado en nodo de respaldo " + nodoRespaldo.getNumeroNodo() + ": " + archivo.getNombre());
+                } catch (Exception e) {
+                    System.err.println("Error al replicar en nodo de respaldo: " + e.getMessage());
+                    // El archivo ya está en el nodo principal, así que continúa
+                }
+            } else {
+                System.out.println("No hay nodo de respaldo disponible");
+            }
 
             System.out.println("Archivo almacenado exitosamente: " + archivo.getNombre() + " en ruta: " + rutaCompleta);
         } catch (Exception e) {
@@ -217,19 +245,48 @@ public class ServidorAplicacion {
 
     private Archivo procesarLeerArchivo(String nombre, int idUsuario) {
         try {
-            List<Archivo> archivos = servidorBaseDatos.consultarArchivosUsuario(idUsuario);
-            Archivo archivo = archivos.stream()
+            // Buscar archivo en base de datos con información de nodos
+            List<ArchivoConNodo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
+            ArchivoConNodo archivoConNodo = archivosConNodo.stream()
                 .filter(a -> a.getNombre().equals(nombre))
                 .findFirst()
                 .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos"));
 
-            String rutaCompleta = archivo.getRuta() + "/" + archivo.getNombre();
+            String rutaCompleta = archivoConNodo.getRuta() + "/" + archivoConNodo.getNombre();
 
-            InterfazRMI nodo = registroNodos.obtenerNodoParaTrabajo();
-            Archivo archivoLeido = nodo.leerArchivo(rutaCompleta);
+            // Intentar leer desde el nodo principal
+            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodo());
+            
+            if (nodoPrincipal != null) {
+                try {
+                    Archivo archivoLeido = nodoPrincipal.getInterfazRMI().leerArchivo(rutaCompleta);
+                    System.out.println("Archivo descargado exitosamente desde nodo principal " + 
+                                     nodoPrincipal.getNumeroNodo() + ": " + nombre);
+                    return archivoLeido;
+                } catch (Exception e) {
+                    System.err.println("Error al leer desde nodo principal " + 
+                                     nodoPrincipal.getNumeroNodo() + ": " + e.getMessage());
+                    
+                    // Si hay nodo de respaldo, intentar leer desde ahí
+                    if (archivoConNodo.tieneRespaldo()) {
+                        InfoNodo nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodoRespaldo());
+                        if (nodoRespaldo != null) {
+                            try {
+                                Archivo archivoLeido = nodoRespaldo.getInterfazRMI().leerArchivo(rutaCompleta);
+                                System.out.println("Archivo descargado exitosamente desde nodo de respaldo " + 
+                                                 nodoRespaldo.getNumeroNodo() + ": " + nombre);
+                                return archivoLeido;
+                            } catch (Exception e2) {
+                                System.err.println("Error al leer desde nodo de respaldo " + 
+                                                 nodoRespaldo.getNumeroNodo() + ": " + e2.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+            
+            throw new Exception("No se pudo leer el archivo desde ningún nodo disponible");
 
-            System.out.println("Archivo descargado exitosamente: " + archivo.getNombre());
-            return archivoLeido;
         } catch (Exception e) {
             System.err.println("Error al leer el archivo: " + e.getMessage());
             e.printStackTrace();

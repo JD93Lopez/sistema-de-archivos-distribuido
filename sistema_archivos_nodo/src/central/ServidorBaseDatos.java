@@ -28,12 +28,46 @@ public class ServidorBaseDatos {
             stmt.setString(2, archivo.getRuta());
             stmt.setLong(3, archivo.getContenido().length);
             stmt.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-            stmt.setInt(5, 1);
+            stmt.setInt(5, 1); // Número de nodo temporal - se actualizará después
             stmt.setInt(6, idDirectorio);
             stmt.setInt(7, idUsuario);
 
             stmt.executeUpdate();
             System.out.println("Archivo guardado en la base de datos: " + archivo.getNombre());
+        }
+    }
+
+    public void guardarArchivoConNodos(Archivo archivo, int idUsuario, int numeroNodo, Integer numeroNodoRespaldo) throws SQLException {
+        String query = "INSERT INTO Archivo (nombre, ruta, tamano, fecha_crea, nodo, nodo_respaldo, Directorio_idDirectorio, Directorio_User_idUser) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = ConexionDB.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            String rutaDirectorio = archivo.getRuta();
+            int idDirectorio = obtenerIdDirectorioPorRuta(rutaDirectorio, idUsuario);
+            
+            if (idDirectorio == -1) {
+                idDirectorio = obtenerIdDirectorioRaiz(idUsuario);
+            }
+                
+            stmt.setString(1, archivo.getNombre());
+            stmt.setString(2, archivo.getRuta());
+            stmt.setLong(3, archivo.getContenido().length);
+            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+            stmt.setInt(5, numeroNodo);
+            if (numeroNodoRespaldo != null) {
+                stmt.setInt(6, numeroNodoRespaldo);
+            } else {
+                stmt.setNull(6, java.sql.Types.INTEGER);
+            }
+            stmt.setInt(7, idDirectorio);
+            stmt.setInt(8, idUsuario);
+
+            stmt.executeUpdate();
+            System.out.println("Archivo guardado en la base de datos: " + archivo.getNombre() + 
+                             " en nodo " + numeroNodo + 
+                             (numeroNodoRespaldo != null ? " con respaldo en nodo " + numeroNodoRespaldo : ""));
         }
     }
 
@@ -70,6 +104,33 @@ public class ServidorBaseDatos {
             }
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+
+        return archivos;
+    }
+
+    /**
+     * Consulta archivos de usuario con información del nodo
+     */
+    public List<ArchivoConNodo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
+        String query = "SELECT nombre, ruta, nodo, nodo_respaldo FROM Archivo WHERE Directorio_User_idUser = ?";
+        List<ArchivoConNodo> archivos = new ArrayList<>();
+
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, idUsuario);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                ArchivoConNodo archivo = new ArchivoConNodo(
+                    rs.getString("nombre"),
+                    rs.getString("ruta"),
+                    rs.getInt("nodo"),
+                    rs.getObject("nodo_respaldo") != null ? rs.getInt("nodo_respaldo") : null
+                );
+                archivos.add(archivo);
+            }
         }
 
         return archivos;

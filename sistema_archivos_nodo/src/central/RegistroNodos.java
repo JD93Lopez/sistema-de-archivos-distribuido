@@ -15,6 +15,7 @@ public class RegistroNodos {
                 "odos.config";
     
     private List<InterfazRMI> nodosActivos = new ArrayList<>();
+    private List<InfoNodo> infoNodos = new ArrayList<>();
     private List<String> direccionesNodos = new ArrayList<>();
     private AtomicInteger indiceRoundRobin = new AtomicInteger(0);
 
@@ -24,9 +25,9 @@ public class RegistroNodos {
             String linea;
             while ((linea = reader.readLine()) != null) {
                 linea = linea.trim();
-                // Ignorar líneas vacías y comentarios
+
                 if (!linea.isEmpty() && !linea.startsWith("#")) {
-                    // Validar formato básico ip:puerto
+                    
                     if (linea.contains(":")) {
                         direccionesNodos.add(linea);
                         System.out.println("Configuración cargada: " + linea);
@@ -37,7 +38,7 @@ public class RegistroNodos {
             }
         } catch (IOException e) {
             System.err.println("Error al leer archivo de configuración: " + e.getMessage());
-            // Configuración por defecto si falla la lectura
+
             direccionesNodos.add("localhost:1099");
             direccionesNodos.add("localhost:1100");
             direccionesNodos.add("localhost:1101");
@@ -46,13 +47,15 @@ public class RegistroNodos {
     }
 
     public void actualizarNodos() {
-        // Cargar configuración si no se ha hecho antes
         if (direccionesNodos.isEmpty()) {
             cargarConfiguracion();
         }
         
         List<InterfazRMI> nuevosNodos = new ArrayList<>();
-        for (String direccion : direccionesNodos) {
+        List<InfoNodo> nuevosInfoNodos = new ArrayList<>();
+        
+        for (int i = 0; i < direccionesNodos.size(); i++) {
+            String direccion = direccionesNodos.get(i);
             try {
                 String[] partes = direccion.split(":");
                 if (partes.length != 2) {
@@ -66,13 +69,19 @@ public class RegistroNodos {
                 Registry registry = LocateRegistry.getRegistry(host, puerto);
                 InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
                 nodo.ping();
+                
+                int numeroNodo = i + 1;
+                InfoNodo infoNodo = new InfoNodo(numeroNodo, nodo, direccion);
+                
                 nuevosNodos.add(nodo);
-                System.out.println("Nodo conectado: " + direccion);
+                nuevosInfoNodos.add(infoNodo);
+                System.out.println("Nodo " + numeroNodo + " conectado: " + direccion);
             } catch (Exception e) {
                 System.err.println("No se pudo conectar al nodo: " + direccion + " - " + e.getMessage());
             }
         }
         this.nodosActivos = nuevosNodos;
+        this.infoNodos = nuevosInfoNodos;
         this.indiceRoundRobin.set(0);
     }
 
@@ -99,5 +108,57 @@ public class RegistroNodos {
 
     public int obtenerNumeroNodosConfigurados() {
         return direccionesNodos.size();
+    }
+
+    public InfoNodo obtenerInfoNodoParaTrabajo() {
+        if (infoNodos.isEmpty()) {
+            actualizarNodos();
+            if (infoNodos.isEmpty()) {
+                throw new RuntimeException("No hay nodos disponibles.");
+            }
+        }
+        int indice = indiceRoundRobin.getAndIncrement() % infoNodos.size();
+        return infoNodos.get(indice);
+    }
+
+    public InfoNodo obtenerNodoRespaldo(int numeroNodoPrincipal) {
+        if (infoNodos.isEmpty()) {
+            actualizarNodos();
+            if (infoNodos.isEmpty()) {
+                throw new RuntimeException("No hay nodos disponibles.");
+            }
+        }
+        
+        // Si solo hay un nodo, retorna null (no hay respaldo)
+        if (infoNodos.size() <= 1) {
+            return null;
+        }
+        
+        // Busca un nodo diferente al principal
+        for (InfoNodo info : infoNodos) {
+            if (info.getNumeroNodo() != numeroNodoPrincipal) {
+                return info;
+            }
+        }
+        
+        return null;
+    }
+
+    public InfoNodo obtenerNodoPorNumero(int numeroNodo) {
+        if (infoNodos.isEmpty()) {
+            actualizarNodos();
+        }
+        
+        return infoNodos.stream()
+                .filter(info -> info.getNumeroNodo() == numeroNodo)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public List<InfoNodo> obtenerTodosLosNodos() {
+        if (infoNodos.isEmpty()) {
+            actualizarNodos();
+        }
+        return new ArrayList<>(infoNodos);
     }
 }
