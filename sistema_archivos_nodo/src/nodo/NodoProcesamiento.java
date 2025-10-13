@@ -13,6 +13,7 @@ import java.util.Comparator;
 import central.Archivo;
 import central.Usuario;
 import central.TipoSolicitud;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRMI {
 
@@ -20,6 +21,7 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     private ExecutorService poolHilos;
     private PriorityBlockingQueue<Tarea> colaTareas;
     private static final int NUMERO_HILOS = 5;
+    private AtomicInteger tareasEjecutandose = new AtomicInteger(0);
 
     public NodoProcesamiento() throws Exception {
         super();
@@ -41,15 +43,19 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         Tarea tarea = colaTareas.take();
+                        tareasEjecutandose.incrementAndGet();
                         System.out.println("Procesando tarea: " + tarea.getDescripcion() + " (prioridad: " + tarea.getPrioridad() + ") en hilo: " + Thread.currentThread().getName());
+                        System.out.println("Tareas ejecutándose: " + tareasEjecutandose.get() + ", Tareas pendientes: " + colaTareas.size());
                         ejecutarTarea(tarea);
                         System.out.println("Tarea completada: " + tarea.getDescripcion());
+                        tareasEjecutandose.decrementAndGet();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         break;
                     } catch (Exception e) {
                         System.err.println("Error al ejecutar tarea: " + e.getMessage());
                         e.printStackTrace();
+                        tareasEjecutandose.decrementAndGet();
                     }
                 }
             });
@@ -57,6 +63,8 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     private void ejecutarTarea(Tarea tarea) throws Exception {
+        Thread.sleep(200);
+        
         switch (tarea.getTipoTarea()) {
             case CREAR_DIRECTORIO:
                 Path rutaCompleta = Paths.get(directorioRaiz, tarea.getRuta());
@@ -122,13 +130,10 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                 throw new java.rmi.RemoteException("El archivo no existe: " + rutaCompleta);
             }
             
-            // Leer el contenido del archivo
             byte[] contenido = Files.readAllBytes(rutaCompleta);
             
-            // Extraer solo el nombre del archivo (sin la ruta)
             String nombreArchivo = rutaCompleta.getFileName().toString();
             
-            // Extraer la ruta del directorio
             String rutaDirectorio = rutaCompleta.getParent().toString().replace(directorioRaiz, "");
             if (rutaDirectorio.startsWith("\\") || rutaDirectorio.startsWith("/")) {
                 rutaDirectorio = rutaDirectorio.substring(1);
@@ -167,6 +172,28 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     @Override
     public void ping() throws RemoteException {
         // System.out.println("Ping recibido");
+    }
+
+    @Override
+    public long obtenerEspacioDisponible() throws RemoteException {
+        try {
+            File directorio = new File(directorioRaiz);
+            
+            return directorio.getFreeSpace();
+        } catch (Exception e) {
+            System.err.println("Error al obtener espacio disponible: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    @Override
+    public int obtenerCargaTrabajo() throws RemoteException {
+        
+        int tareasActuales = tareasEjecutandose.get();
+        int tareasPendientes = colaTareas.size();
+        int cargaTotal = tareasActuales + tareasPendientes;
+        
+        return cargaTotal;
     }
 
 }

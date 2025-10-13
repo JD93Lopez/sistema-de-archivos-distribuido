@@ -13,4 +13,6 @@ public interface InterfazRMI extends Remote {
     void compartirArchivo(Archivo archivo, Usuario usuario) throws RemoteException;
 
     void ping() throws RemoteException;
+    long obtenerEspacioDisponible() throws RemoteException;
+    int obtenerCargaTrabajo() throws RemoteException;
 }

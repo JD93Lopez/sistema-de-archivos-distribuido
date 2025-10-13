@@ -19,7 +19,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
     private ServidorAplicacion servidorAplicacion;
     private AuthService authService;
     
-    private static boolean VALIDACION_TOKEN_HABILITADA = false;
+    private static boolean VALIDACION_TOKEN_HABILITADA = true;
 
     public ServicioSOAPImpl() {
         this.servidorAplicacion = new ServidorAplicacion();
@@ -57,7 +57,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
             throw new RuntimeException("Token de autenticación inválido");
         }
         
-        System.out.println("Token válido para usuario ID: " + tokenInfo.userId);
+        System.out.println("Token valido para usuario ID: " + tokenInfo.userId);
         return tokenInfo.userId;
     }
 
@@ -66,13 +66,14 @@ public class ServicioSOAPImpl implements ServicioSOAP {
                                @WebParam(name = "token") String token) {
         int userId = validarToken(token);
         System.out.println("Crear directorio llamado: " + ruta + " (Usuario: " + userId + ")");
-        servidorAplicacion.crearDirectorio(ruta);
+        servidorAplicacion.crearDirectorio(ruta, userId);
     }
 
     @WebMethod
     public void subirArchivo(@WebParam(name = "archivo") Archivo archivo, 
                            @WebParam(name = "token") String token) {
         int userId = validarToken(token);
+        archivo.setIdUsuario(userId);
         System.out.println("Subir archivo: " + archivo.getNombre() + " (Usuario: " + userId + ")");
         servidorAplicacion.subirArchivo(archivo);
     }
@@ -82,7 +83,11 @@ public class ServicioSOAPImpl implements ServicioSOAP {
                                   @WebParam(name = "token") String token) {
         int userId = validarToken(token);
         System.out.println("Descargar archivo: " + nombre + " (Usuario: " + userId + ")");
-        return servidorAplicacion.descargarArchivo(nombre);
+        Archivo archivo = servidorAplicacion.descargarArchivo(nombre, userId);
+        if (archivo != null) {
+            archivo.setIdUsuario(userId);
+        }
+        return archivo;
     }
 
     @WebMethod
@@ -91,7 +96,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
                            @WebParam(name = "token") String token) {
         int userId = validarToken(token);
         System.out.println("Mover archivo de " + origen + " a " + destino + " (Usuario: " + userId + ")");
-        servidorAplicacion.moverArchivo(origen, destino);
+        servidorAplicacion.moverArchivo(origen, destino, userId);
     }
 
     @WebMethod
@@ -99,7 +104,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
                               @WebParam(name = "token") String token) {
         int userId = validarToken(token);
         System.out.println("Eliminar archivo: " + nombre + " (Usuario: " + userId + ")");
-        servidorAplicacion.eliminarArchivo(nombre);
+        servidorAplicacion.eliminarArchivo(nombre, userId);
     }
 
     @WebMethod
@@ -107,6 +112,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
                                @WebParam(name = "usuario") Usuario usuario, 
                                @WebParam(name = "token") String token) {
         int userId = validarToken(token);
+        archivo.setIdUsuario(userId);
         System.out.println("Compartir archivo " + archivo.getNombre() + " con " + usuario.getNombre() + " (Usuario: " + userId + ")");
         servidorAplicacion.compartirArchivo(archivo, usuario);
     }
@@ -115,7 +121,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
     public ArbolEspacio consultarEspacioConsumido(@WebParam(name = "token") String token) {
         int userId = validarToken(token);
         System.out.println("Consultar espacio consumido (Usuario: " + userId + ")");
-        return servidorAplicacion.consultarEspacioConsumido();
+        return servidorAplicacion.consultarEspacioConsumido(userId);
     }
 
     public static void main(String[] args) {

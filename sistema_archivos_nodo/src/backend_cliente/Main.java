@@ -9,7 +9,17 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import backend_cliente.generated.*;
+
 public class Main {
+
+    private static final backend_cliente.generated.ServicioSOAPImpl soapPort = createSoapPort();
+
+    private static backend_cliente.generated.ServicioSOAPImpl createSoapPort() {
+        ServicioSOAPImplService service = new ServicioSOAPImplService();
+        backend_cliente.generated.ServicioSOAPImpl port = service.getServicioSOAPImplPort();
+        return port;
+    }
 
     public static void main(String[] args) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(8081), 0);
@@ -87,15 +97,7 @@ public class Main {
                 String email = requireParam(json, "email");
                 String contrasena = requireParam(json, "contrasena");
 
-                String xml = String.format(
-                    "<cen:registrarse>" +
-                       "<nombre>%s</nombre>" +
-                       "<email>%s</email>" +
-                       "<contrasena>%s</contrasena>" +
-                    "</cen:registrarse>", nombre, email, contrasena);
-
-                String response = SoapClient.sendSoapRequest(xml);
-                String token = XmlResponseParser.extractToken(response);
+                String token = soapPort.registrarse(nombre, email, contrasena);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("mensaje", "Registro exitoso");
                 responseMap.put("token", token);
@@ -114,14 +116,7 @@ public class Main {
                 String email = requireParam(json, "email");
                 String contrasena = requireParam(json, "contrasena");
 
-                String xml = String.format(
-                    "<cen:iniciarSesion>" +
-                       "<email>%s</email>" +
-                       "<contrasena>%s</contrasena>" +
-                    "</cen:iniciarSesion>", email, contrasena);
-
-                String response = SoapClient.sendSoapRequest(xml);
-                String token = XmlResponseParser.extractToken(response);
+                String token = soapPort.iniciarSesion(email, contrasena);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("token", token);
                 sendJsonResponse(exchange, 200, responseMap);
@@ -139,13 +134,7 @@ public class Main {
                 String ruta = requireParam(json, "ruta");
                 String token = requireParam(json, "token");
 
-                String xml = String.format(
-                    "<cen:crearDirectorio>" +
-                       "<ruta>%s</ruta>" +
-                       "<arg1>%s</arg1>" +
-                    "</cen:crearDirectorio>", ruta, token);
-
-                SoapClient.sendSoapRequest(xml);
+                soapPort.crearDirectorio(ruta, token);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("mensaje", "Directorio creado");
                 sendJsonResponse(exchange, 200, responseMap);
@@ -168,17 +157,12 @@ public class Main {
                 String contenidoB64 = requireParam(archivoJson, "contenido");
                 String token = requireParam(json, "token");
 
-                String xml = String.format(
-                    "<cen:subirArchivo>" +
-                       "<archivo>" +
-                          "<nombre>%s</nombre>" +
-                          "<ruta>%s</ruta>" +
-                          "<contenido>%s</contenido>" +
-                       "</archivo>" +
-                       "<arg1>%s</arg1>" +
-                    "</cen:subirArchivo>", nombre, ruta, contenidoB64, token);
+                backend_cliente.generated.Archivo archivo = new backend_cliente.generated.Archivo();
+                archivo.setNombre(nombre);
+                archivo.setRuta(ruta);
+                archivo.setContenido(Base64.getDecoder().decode(contenidoB64));
 
-                SoapClient.sendSoapRequest(xml);
+                soapPort.subirArchivo(archivo, token);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("mensaje", "Archivo subido");
                 sendJsonResponse(exchange, 200, responseMap);
@@ -203,18 +187,21 @@ public class Main {
                     if (token == null) throw new IllegalArgumentException("Falta token");
                 }
 
-                String xml = String.format(
-                    "<cen:descargarArchivo>" +
-                       "<nombre>%s</nombre>" +
-                       "<arg1>%s</arg1>" +
-                    "</cen:descargarArchivo>", nombre, token);
-
-                String response = SoapClient.sendSoapRequest(xml);
-                Archivo archivo = XmlResponseParser.extractArchivo(response);
-                sendJsonResponse(exchange, 200, archivo.toString());
+                backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, token);
+                sendJsonResponse(exchange, 200, archivoToString(archivo));
             } catch (Exception e) {
                 sendErrorResponse(exchange, 400, e.getMessage());
             }
+        }
+
+        private String archivoToString (backend_cliente.generated.Archivo archivo) {
+            StringBuilder stringFile = new StringBuilder();
+            stringFile.append("{");
+            stringFile.append("nombre:").append(archivo.getNombre() != null ? archivo.getNombre() : "").append(",");
+            stringFile.append("ruta:").append(archivo.getRuta() != null ? archivo.getRuta() : "").append(",");
+            stringFile.append("contenido:").append(archivo.getContenido() != null ? Base64.getEncoder().encodeToString(archivo.getContenido()) : "");
+            stringFile.append("}");
+            return stringFile.toString();
         }
     }
 
@@ -227,14 +214,7 @@ public class Main {
                 String destino = requireParam(json, "destino");
                 String token = requireParam(json, "token");
 
-                String xml = String.format(
-                    "<cen:moverArchivo>" +
-                       "<origen>%s</origen>" +
-                       "<destino>%s</destino>" +
-                       "<arg1>%s</arg1>" +
-                    "</cen:moverArchivo>", origen, destino, token);
-
-                SoapClient.sendSoapRequest(xml);
+                soapPort.moverArchivo(origen, destino, token);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("mensaje", "Archivo movido");
                 sendJsonResponse(exchange, 200, responseMap);
@@ -259,13 +239,7 @@ public class Main {
                     if (token == null) throw new IllegalArgumentException("Falta token");
                 }
 
-                String xml = String.format(
-                    "<cen:eliminarArchivo>" +
-                       "<nombre>%s</nombre>" +
-                       "<arg1>%s</arg1>" +
-                    "</cen:eliminarArchivo>", nombre, token);
-
-                SoapClient.sendSoapRequest(xml);
+                soapPort.eliminarArchivo(nombre, token);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("mensaje", "Archivo eliminado");
                 sendJsonResponse(exchange, 200, responseMap);
@@ -294,23 +268,16 @@ public class Main {
                 String usuarioNombre = requireParam(usuarioJson, "nombre");
                 String usuarioEmail = requireParam(usuarioJson, "email");
 
-                String xml = String.format(
-                    "<cen:compartirArchivo>" +
-                       "<archivo>" +
-                          "<nombre>%s</nombre>" +
-                          "<ruta>%s</ruta>" +
-                          "<contenido>%s</contenido>" +
-                       "</archivo>" +
-                       "<usuario>" +
-                          "<nombre>%s</nombre>" +
-                          "<email>%s</email>" +
-                       "</usuario>" +
-                       "<arg2>%s</arg2>" +
-                    "</cen:compartirArchivo>", 
-                    archivoNombre, archivoRuta, archivoContenido,
-                    usuarioNombre, usuarioEmail, token);
+                backend_cliente.generated.Archivo archivo = new backend_cliente.generated.Archivo();
+                archivo.setNombre(archivoNombre);
+                archivo.setRuta(archivoRuta);
+                archivo.setContenido(Base64.getDecoder().decode(archivoContenido));
 
-                SoapClient.sendSoapRequest(xml);
+                backend_cliente.generated.Usuario usuario = new backend_cliente.generated.Usuario();
+                usuario.setNombre(usuarioNombre);
+                usuario.setEmail(usuarioEmail);
+
+                soapPort.compartirArchivo(archivo, usuario, token);
                 Map<String, Object> responseMap = new HashMap<>();
                 responseMap.put("mensaje", "Archivo compartido");
                 sendJsonResponse(exchange, 200, responseMap);
@@ -329,13 +296,7 @@ public class Main {
                     throw new IllegalArgumentException("Token requerido en header: Authorization: Bearer <token>");
                 }
 
-                String xml = String.format(
-                    "<cen:consultarEspacioConsumido>" +
-                       "<arg0>%s</arg0>" +
-                    "</cen:consultarEspacioConsumido>", token);
-
-                String response = SoapClient.sendSoapRequest(xml);
-                ArbolEspacio arbol = XmlResponseParser.extractArbolEspacio(response);
+                backend_cliente.generated.ArbolEspacio arbol = soapPort.consultarEspacioConsumido(token);
                 sendJsonResponse(exchange, 200, arbol);
             } catch (Exception e) {
                 sendErrorResponse(exchange, 400, e.getMessage());
