@@ -63,7 +63,7 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     private void ejecutarTarea(Tarea tarea) throws Exception {
-        Thread.sleep(200);
+        // Thread.sleep(200);
         
         switch (tarea.getTipoTarea()) {
             case CREAR_DIRECTORIO:

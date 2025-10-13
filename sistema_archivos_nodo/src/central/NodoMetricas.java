@@ -4,7 +4,7 @@ public class NodoMetricas {
     private long espacioDisponible;
     private int cargaTrabajo;
     private long timestampActualizacion;
-    private static final long TIEMPO_EXPIRACION = 1;
+    private static final long TIEMPO_EXPIRACION = 3000; // 3 segundos
 
     public NodoMetricas() {
         this.espacioDisponible = 0;

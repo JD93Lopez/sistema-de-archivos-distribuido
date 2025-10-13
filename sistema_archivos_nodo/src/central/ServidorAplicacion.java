@@ -18,17 +18,41 @@ public class ServidorAplicacion {
     private Queue<Solicitud> colaSolicitudes;
     private ServidorBaseDatos servidorBaseDatos;
     private ExecutorService executorService;
+    private ExecutorService processingPool;
     private volatile boolean running;
     private RegistroNodos registroNodos;
 
     public ServidorAplicacion() {
         this.colaSolicitudes = new LinkedBlockingQueue<>();
         this.servidorBaseDatos = new ServidorBaseDatos();
-        this.executorService = Executors.newFixedThreadPool(6);
+        this.executorService = Executors.newFixedThreadPool(3);
+        // Pool dedicado para procesamiento paralelo de solicitudes
+        this.processingPool = Executors.newFixedThreadPool(15);
         this.running = true;
         this.registroNodos = new RegistroNodos();
 
-        executorService.submit(this::coordinarNodos);
+        // Iniciar múltiples hilos coordinadores para mejor distribución
+        for (int i = 0; i < 3; i++) {
+            executorService.submit(this::coordinarNodos);
+        }
+        
+        // Iniciar hilo para actualizar métricas de nodos periódicamente
+        executorService.submit(this::actualizarMetricasNodos);
+    }
+    
+    private void actualizarMetricasNodos() {
+        while (running) {
+            try {
+                Thread.sleep(5000); // Actualizar cada 5 segundos
+                registroNodos.actualizarNodos();
+                System.out.println("Métricas de nodos actualizadas");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                System.err.println("Error actualizando métricas: " + e.getMessage());
+            }
+        }
     }
 
     public void crearDirectorio(String ruta, int idUsuario) {
@@ -105,36 +129,50 @@ public class ServidorAplicacion {
         while (running) {
             try {
                 Solicitud solicitud = ((LinkedBlockingQueue<Solicitud>) colaSolicitudes).take();
-                System.out.println("Procesando solicitud: " + solicitud);
-                switch (solicitud.getTipo()) {
-                    case CREAR_DIRECTORIO:
-                        procesarCrearDirectorio(solicitud.getArchivo().getRuta(), solicitud.getArchivo());
-                        break;
-                    case ALMACENAR:
-                        procesarAlmacenarArchivo(solicitud.getArchivo());
-                        break;
-                    case LEER:
-                        procesarLeerArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
-                        break;
-                    case MOVER:
-                        procesarMoverArchivo(solicitud.getArchivo().getRuta(), "/nuevo/destino");
-                        break;
-                    case ELIMINAR:
-                        procesarEliminarArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
-                        break;
-                    case COMPARTIR:
-                        if (!solicitud.getUsuarios().isEmpty()) {
-                            procesarCompartirArchivo(solicitud.getArchivo(), solicitud.getUsuarios().get(0));
-                        }
-                        break;
-                }
+                System.out.println("Solicitud recibida: " + solicitud);
+                
+                // Procesar la solicitud en el pool de procesamiento para no bloquear la coordinación
+                processingPool.submit(() -> {
+                    try {
+                        procesarSolicitudEnParalelo(solicitud);
+                    } catch (Exception e) {
+                        System.err.println("Error procesando solicitud en paralelo: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+                
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
-                System.err.println("Error procesando solicitud: " + e.getMessage());
-                e.printStackTrace();
+                System.err.println("Error en coordinador de nodos: " + e.getMessage());
             }
+        }
+    }
+
+    private void procesarSolicitudEnParalelo(Solicitud solicitud) {
+        System.out.println("Procesando solicitud en paralelo: " + solicitud);
+        switch (solicitud.getTipo()) {
+            case CREAR_DIRECTORIO:
+                procesarCrearDirectorio(solicitud.getArchivo().getRuta(), solicitud.getArchivo());
+                break;
+            case ALMACENAR:
+                procesarAlmacenarArchivo(solicitud.getArchivo());
+                break;
+            case LEER:
+                procesarLeerArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
+                break;
+            case MOVER:
+                procesarMoverArchivo(solicitud.getArchivo().getRuta(), "/nuevo/destino");
+                break;
+            case ELIMINAR:
+                procesarEliminarArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
+                break;
+            case COMPARTIR:
+                if (!solicitud.getUsuarios().isEmpty()) {
+                    procesarCompartirArchivo(solicitud.getArchivo(), solicitud.getUsuarios().get(0));
+                }
+                break;
         }
     }
 
@@ -162,16 +200,16 @@ public class ServidorAplicacion {
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaCompleta = "/" + nombreUsuario + ruta;
 
-            // Crear directorio en todos los nodos activos
+            // Crear directorio en todos los nodos activos en paralelo
             List<InfoNodo> todosLosNodos = registroNodos.obtenerTodosLosNodos();
-            for (InfoNodo nodo : todosLosNodos) {
+            todosLosNodos.parallelStream().forEach(nodo -> {
                 try {
                     nodo.getInterfazRMI().crearDirectorio(rutaCompleta);
                     System.out.println("Directorio creado en nodo " + nodo.getNumeroNodo() + ": " + rutaCompleta);
                 } catch (Exception e) {
                     System.err.println("Error al crear directorio en nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
                 }
-            }
+            });
 
             servidorBaseDatos.guardarDirectorio(nombreDirectorio, ruta, idUsuario, idDirectorioPadre);
             System.out.println("Directorio creado exitosamente en base de datos: " + rutaCompleta);
@@ -205,7 +243,7 @@ public class ServidorAplicacion {
             servidorBaseDatos.guardarDirectorio(nombreDirectorio, rutaDirectorio, idUsuario, idDirectorioPadre);
             System.out.println("Directorio creado para el archivo: " + rutaDirectorio);
 
-            // Obtener nodo principal
+            // Usar el método original para obtener el mejor nodo disponible
             InfoNodo nodoPrincipal = registroNodos.obtenerInfoNodoParaTrabajo();
             
             // Obtener nodo de respaldo (diferente al principal)
@@ -219,22 +257,22 @@ public class ServidorAplicacion {
             servidorBaseDatos.guardarArchivoConNodos(archivoConRutaCompleta, idUsuario, 
                                                    nodoPrincipal.getNumeroNodo(), numeroNodoRespaldo);
 
-            // Almacenar en nodo principal
-            nodoPrincipal.getInterfazRMI().almacenarArchivo(archivoConRutaCompleta);
-            System.out.println("Archivo almacenado en nodo principal " + nodoPrincipal.getNumeroNodo() + ": " + archivo.getNombre());
-
-            // Almacenar en nodo de respaldo si existe
+            // Almacenar en paralelo en nodo principal y respaldo
+            List<InfoNodo> nodosParaAlmacenar = new ArrayList<>();
+            nodosParaAlmacenar.add(nodoPrincipal);
             if (nodoRespaldo != null) {
-                try {
-                    nodoRespaldo.getInterfazRMI().almacenarArchivo(archivoConRutaCompleta);
-                    System.out.println("Archivo replicado en nodo de respaldo " + nodoRespaldo.getNumeroNodo() + ": " + archivo.getNombre());
-                } catch (Exception e) {
-                    System.err.println("Error al replicar en nodo de respaldo: " + e.getMessage());
-                    // El archivo ya está en el nodo principal, así que continúa
-                }
-            } else {
-                System.out.println("No hay nodo de respaldo disponible");
+                nodosParaAlmacenar.add(nodoRespaldo);
             }
+
+            // Procesar almacenamiento en paralelo usando streams
+            nodosParaAlmacenar.parallelStream().forEach(nodo -> {
+                try {
+                    nodo.getInterfazRMI().almacenarArchivo(archivoConRutaCompleta);
+                    System.out.println("Archivo almacenado en nodo " + nodo.getNumeroNodo() + ": " + archivo.getNombre());
+                } catch (Exception e) {
+                    System.err.println("Error almacenando en nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
+                }
+            });
 
             System.out.println("Archivo almacenado exitosamente: " + archivo.getNombre() + " en ruta: " + rutaCompleta);
         } catch (Exception e) {
@@ -254,34 +292,43 @@ public class ServidorAplicacion {
 
             String rutaCompleta = archivoConNodo.getRuta() + "/" + archivoConNodo.getNombre();
 
-            // Intentar leer desde el nodo principal
-            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodo());
+            // Crear lista de nodos candidatos para lectura
+            List<InfoNodo> nodosParaLectura = new ArrayList<>();
             
+            // Agregar nodo principal
+            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodo());
             if (nodoPrincipal != null) {
+                nodosParaLectura.add(nodoPrincipal);
+            }
+            
+            // Agregar nodo de respaldo si existe
+            if (archivoConNodo.tieneRespaldo()) {
+                InfoNodo nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodoRespaldo());
+                if (nodoRespaldo != null) {
+                    nodosParaLectura.add(nodoRespaldo);
+                }
+            }
+
+            // Ordenar nodos por carga de trabajo (menor carga primero)
+            nodosParaLectura.sort((n1, n2) -> {
                 try {
-                    Archivo archivoLeido = nodoPrincipal.getInterfazRMI().leerArchivo(rutaCompleta);
-                    System.out.println("Archivo descargado exitosamente desde nodo principal " + 
-                                     nodoPrincipal.getNumeroNodo() + ": " + nombre);
+                    n1.asegurarMetricasActualizadas();
+                    n2.asegurarMetricasActualizadas();
+                    return Integer.compare(n1.getMetricas().getCargaTrabajo(), n2.getMetricas().getCargaTrabajo());
+                } catch (Exception e) {
+                    return 0;
+                }
+            });
+
+            // Intentar leer desde los nodos disponibles (empezando por el menos cargado)
+            for (InfoNodo nodo : nodosParaLectura) {
+                try {
+                    Archivo archivoLeido = nodo.getInterfazRMI().leerArchivo(rutaCompleta);
+                    System.out.println("Archivo descargado exitosamente desde nodo " + 
+                                     nodo.getNumeroNodo() + " (carga: " + nodo.getMetricas().getCargaTrabajo() + "): " + nombre);
                     return archivoLeido;
                 } catch (Exception e) {
-                    System.err.println("Error al leer desde nodo principal " + 
-                                     nodoPrincipal.getNumeroNodo() + ": " + e.getMessage());
-                    
-                    // Si hay nodo de respaldo, intentar leer desde ahí
-                    if (archivoConNodo.tieneRespaldo()) {
-                        InfoNodo nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodoRespaldo());
-                        if (nodoRespaldo != null) {
-                            try {
-                                Archivo archivoLeido = nodoRespaldo.getInterfazRMI().leerArchivo(rutaCompleta);
-                                System.out.println("Archivo descargado exitosamente desde nodo de respaldo " + 
-                                                 nodoRespaldo.getNumeroNodo() + ": " + nombre);
-                                return archivoLeido;
-                            } catch (Exception e2) {
-                                System.err.println("Error al leer desde nodo de respaldo " + 
-                                                 nodoRespaldo.getNumeroNodo() + ": " + e2.getMessage());
-                            }
-                        }
-                    }
+                    System.err.println("Error al leer desde nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
                 }
             }
             
