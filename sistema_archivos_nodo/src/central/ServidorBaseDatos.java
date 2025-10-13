@@ -454,7 +454,6 @@ class ConexionDB {
     }
 
     public static Connection getConnection() throws SQLException {
-        System.out.println("Conectando a la base de datos...");
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
     

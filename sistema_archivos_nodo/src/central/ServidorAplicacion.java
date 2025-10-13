@@ -24,7 +24,7 @@ public class ServidorAplicacion {
     public ServidorAplicacion() {
         this.colaSolicitudes = new LinkedBlockingQueue<>();
         this.servidorBaseDatos = new ServidorBaseDatos();
-        this.executorService = Executors.newFixedThreadPool(2);
+        this.executorService = Executors.newFixedThreadPool(6);
         this.running = true;
         this.registroNodos = new RegistroNodos();
 

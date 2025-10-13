@@ -117,8 +117,43 @@ public class RegistroNodos {
                 throw new RuntimeException("No hay nodos disponibles.");
             }
         }
-        int indice = indiceRoundRobin.getAndIncrement() % infoNodos.size();
-        return infoNodos.get(indice);
+        
+        return obtenerNodoMasLibre();
+    }
+    
+    private InfoNodo obtenerNodoMasLibre() {
+        InfoNodo mejorNodo = null;
+        double mejorPuntaje = -1;
+        
+        for (InfoNodo nodo : infoNodos) {
+            try {
+                double puntaje = nodo.getPuntajeEficiencia();
+                // System.out.println("Nodo " + nodo.getNumeroNodo() + 
+                //                  " (" + nodo.getDireccion() + 
+                //                  ") - Puntaje: " + String.format("%.2f", puntaje) +
+                //                  " - " + nodo.getMetricas());
+                
+                if (puntaje > mejorPuntaje) {
+                    mejorPuntaje = puntaje;
+                    mejorNodo = nodo;
+                }
+            } catch (Exception e) {
+                System.err.println("Error al evaluar nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
+
+            }
+        }
+        
+        // if (mejorNodo == null) {
+        //     // Fallback al algoritmo round-robin si no se pueden obtener métricas
+        //     System.out.println("No se pudieron obtener métricas, usando Round-Robin como fallback");
+        //     int indice = indiceRoundRobin.getAndIncrement() % infoNodos.size();
+        //     mejorNodo = infoNodos.get(indice);
+        // } else {
+        //     System.out.println(">>> Nodo seleccionado: " + mejorNodo.getNumeroNodo() + 
+        //                      " con puntaje " + String.format("%.2f", mejorPuntaje));
+        // }
+        
+        return mejorNodo;
     }
 
     public InfoNodo obtenerNodoRespaldo(int numeroNodoPrincipal) {
@@ -129,12 +164,10 @@ public class RegistroNodos {
             }
         }
         
-        // Si solo hay un nodo, retorna null (no hay respaldo)
         if (infoNodos.size() <= 1) {
             return null;
         }
         
-        // Busca un nodo diferente al principal
         for (InfoNodo info : infoNodos) {
             if (info.getNumeroNodo() != numeroNodoPrincipal) {
                 return info;

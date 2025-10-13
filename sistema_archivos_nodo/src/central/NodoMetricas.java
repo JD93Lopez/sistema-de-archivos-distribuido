@@ -1,0 +1,83 @@
+package central;
+
+public class NodoMetricas {
+    private long espacioDisponible;
+    private int cargaTrabajo;
+    private long timestampActualizacion;
+    private static final long TIEMPO_EXPIRACION = 1; // 30 segundos
+
+    public NodoMetricas() {
+        this.espacioDisponible = 0;
+        this.cargaTrabajo = Integer.MAX_VALUE; // Valor alto por defecto para nodos sin métricas
+        this.timestampActualizacion = 0;
+    }
+
+    public NodoMetricas(long espacioDisponible, int cargaTrabajo) {
+        this.espacioDisponible = espacioDisponible;
+        this.cargaTrabajo = cargaTrabajo;
+        this.timestampActualizacion = System.currentTimeMillis();
+    }
+
+    public long getEspacioDisponible() {
+        return espacioDisponible;
+    }
+
+    public void setEspacioDisponible(long espacioDisponible) {
+        this.espacioDisponible = espacioDisponible;
+        this.timestampActualizacion = System.currentTimeMillis();
+    }
+
+    public int getCargaTrabajo() {
+        return cargaTrabajo;
+    }
+
+    public void setCargaTrabajo(int cargaTrabajo) {
+        this.cargaTrabajo = cargaTrabajo;
+        this.timestampActualizacion = System.currentTimeMillis();
+    }
+
+    public long getTimestampActualizacion() {
+        return timestampActualizacion;
+    }
+
+    public boolean estanMetricasExpiradas() {
+        return (System.currentTimeMillis() - timestampActualizacion) > TIEMPO_EXPIRACION;
+    }
+
+    public void actualizarMetricas(long espacioDisponible, int cargaTrabajo) {
+        this.espacioDisponible = espacioDisponible;
+        this.cargaTrabajo = cargaTrabajo;
+        this.timestampActualizacion = System.currentTimeMillis();
+    }
+
+    /**
+     * Calcula un puntaje de eficiencia del nodo basado en:
+     * - Carga de trabajo (menos es mejor)
+     * - Espacio disponible (más es mejor)
+     * 
+     * @return Un puntaje donde valores más altos indican un nodo más libre
+     */
+    public double calcularPuntajeEficiencia() {
+        if (estanMetricasExpiradas()) {
+            return 0; // Penalizar nodos con métricas expiradas
+        }
+
+        // Normalizar la carga (invertir para que menos carga = mejor puntaje)
+        double puntajeCarga = Math.max(0, 100 - ((cargaTrabajo*100)/5));
+        
+        // Normalizar el espacio disponible
+        double espacioGB = espacioDisponible / (1024.0 * 1024.0 * 1024.0);
+        double puntajeEspacio = Math.min(500, espacioGB);
+        
+        // Ponderar: 70% carga, 30% espacio
+        return (puntajeCarga * 0.7) + (puntajeEspacio * 0.3);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("NodoMetricas{espacio=%.2fGB, carga=%d tareas, actualizado=%s}", 
+                           espacioDisponible / (1024.0 * 1024.0 * 1024.0), 
+                           cargaTrabajo,
+                           estanMetricasExpiradas() ? "EXPIRADO" : "OK");
+    }
+}
