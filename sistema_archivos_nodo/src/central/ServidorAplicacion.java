@@ -361,7 +361,18 @@ public class ServidorAplicacion {
                 .findFirst()
                 .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos: " + rutaOrigenCompleta));
 
-            // Obtener nodos donde está almacenado el archivo
+            String rutaDirectorioDestino = rutaDestinoCompleta.substring(0, rutaDestinoCompleta.lastIndexOf("/"));
+            if (!rutaDirectorioDestino.equals("/" + nombreUsuario)) {
+                String nombreDirectorioDestino = rutaDirectorioDestino.substring(rutaDirectorioDestino.lastIndexOf("/") + 1);
+                int idDirectorioPadre = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
+                
+                int idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioPorRuta(rutaDirectorioDestino, idUsuario);
+                if (idDirectorioDestino == -1) {
+                    servidorBaseDatos.guardarDirectorio(nombreDirectorioDestino, destino.substring(0, destino.lastIndexOf("/")), idUsuario, idDirectorioPadre);
+                    System.out.println("Directorio de destino creado: " + rutaDirectorioDestino);
+                }
+            }
+
             InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodo());
             InfoNodo nodoRespaldo = null;
             if (archivoConNodo.tieneRespaldo()) {
@@ -382,7 +393,13 @@ public class ServidorAplicacion {
             });
 
             String rutaDestinoParaDB = rutaDestinoCompleta.substring(0, rutaDestinoCompleta.lastIndexOf("/"));
-            servidorBaseDatos.actualizarRutaArchivo(archivoConNodo.getNombre(), rutaDestinoParaDB, idUsuario);
+            
+            int idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioPorRuta(rutaDestinoParaDB, idUsuario);
+            if (idDirectorioDestino == -1) {
+                idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
+            }
+            
+            servidorBaseDatos.actualizarRutaYDirectorioArchivo(archivoConNodo.getNombre(), rutaDestinoParaDB, idDirectorioDestino, idUsuario);
             System.out.println("Archivo movido exitosamente de " + origen + " a " + destino);
 
         } catch (Exception e) {

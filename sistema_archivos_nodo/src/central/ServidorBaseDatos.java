@@ -450,6 +450,26 @@ public class ServidorBaseDatos {
         }
     }
 
+    public void actualizarRutaYDirectorioArchivo(String nombreArchivo, String nuevaRuta, int idDirectorioDestino, int idUsuario) throws SQLException {
+        String query = "UPDATE Archivo SET ruta = ?, Directorio_idDirectorio = ? WHERE nombre = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nuevaRuta);
+            stmt.setInt(2, idDirectorioDestino);
+            stmt.setString(3, nombreArchivo);
+            stmt.setInt(4, idUsuario);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Ruta y directorio del archivo actualizados en BD: " + nombreArchivo + " -> " + nuevaRuta + " (DIR ID: " + idDirectorioDestino + ")");
+            } else {
+                System.err.println("No se pudo actualizar la ruta y directorio del archivo: " + nombreArchivo);
+            }
+        }
+    }
+
     public void compartirArchivo(int idArchivo, int idPropietario, int idReceptor) throws SQLException {
         String query = "INSERT INTO Compartir (Archivo_idFile, Propietario, Receptor) VALUES (?, ?, ?)";
         
