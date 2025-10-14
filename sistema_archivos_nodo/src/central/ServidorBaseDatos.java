@@ -545,20 +545,20 @@ public class ServidorBaseDatos {
     }
 
     public Archivo buscarArchivoPorNombreYRuta(String nombre, String ruta, int idUsuario) throws SQLException {
-        // Construir la ruta completa con el nombre del usuario como prefijo
+
         String nombreUsuario = obtenerNombreUsuario(idUsuario);
         String rutaCompleta;
         
         if (ruta != null && !ruta.isEmpty()) {
             if (ruta.startsWith("/")) {
-                // Si la ruta empieza con /, verificamos si ya tiene el nombre de usuario
+                
                 if (!ruta.startsWith("/" + nombreUsuario)) {
                     rutaCompleta = "/" + nombreUsuario + ruta;
                 } else {
                     rutaCompleta = ruta;
                 }
             } else {
-                // Si no empieza con /, la agregamos con el usuario
+                
                 rutaCompleta = "/" + nombreUsuario + "/" + ruta;
             }
         } else {
@@ -589,9 +589,7 @@ public class ServidorBaseDatos {
     }
 
     public Archivo buscarArchivoCompartido(String nombre, String ruta, int idUsuario) throws SQLException {
-        // Para archivos compartidos, buscamos primero con la ruta exacta como está almacenada
-        // luego intentamos con diferentes variaciones
-        
+
         String query = "SELECT a.nombre, a.ruta, a.nodo, a.nodo_respaldo " +
                       "FROM Archivo a " +
                       "INNER JOIN Compartir c ON a.idFile = c.Archivo_idFile " +
@@ -608,7 +606,7 @@ public class ServidorBaseDatos {
             stmt.setInt(2, idUsuario);
             
             if (ruta != null && !ruta.isEmpty()) {
-                // Primero intentamos con la ruta exacta
+                
                 stmt.setString(3, ruta);
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) {
@@ -621,8 +619,6 @@ public class ServidorBaseDatos {
                     return archivo;
                 }
                 
-                // Si no se encuentra, intentamos con diferentes variaciones de la ruta
-                // Buscar archivos compartidos que contengan la ruta proporcionada
                 String queryPatron = "SELECT a.nombre, a.ruta, a.nodo, a.nodo_respaldo " +
                                    "FROM Archivo a " +
                                    "INNER JOIN Compartir c ON a.idFile = c.Archivo_idFile " +
@@ -645,7 +641,7 @@ public class ServidorBaseDatos {
                     }
                 }
             } else {
-                // Si no se proporciona ruta, buscar cualquier archivo compartido con ese nombre
+                
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) {
                     Archivo archivo = new Archivo();
