@@ -251,7 +251,7 @@ public class ServidorAplicacion {
             Archivo archivoConRutaCompleta = new Archivo(archivo.getNombre(), rutaCompleta, archivo.getContenido());
             
             Integer numeroNodoRespaldo = (nodoRespaldo != null) ? nodoRespaldo.getNumeroNodo() : null;
-            servidorBaseDatos.guardarArchivoConNodos(archivoConRutaCompleta, idUsuario, 
+            servidorBaseDatos.guardarArchivo(archivoConRutaCompleta, idUsuario, 
                                                    nodoPrincipal.getNumeroNodo(), numeroNodoRespaldo);
 
             List<InfoNodo> nodosParaAlmacenar = new ArrayList<>();
@@ -350,18 +350,21 @@ public class ServidorAplicacion {
 
     private void procesarMoverArchivo(String origen, String destino, int idUsuario) {
         try {
-            // Obtener nombre del usuario para construir la ruta completa
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaOrigenCompleta = "/" + nombreUsuario + origen;
             String rutaDestinoCompleta = "/" + nombreUsuario + destino;
             
             List<Archivo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
-            Archivo archivoConNodo = archivosConNodo.stream()
+            Archivo archivoOrigen = archivosConNodo.stream()
                 .filter(a -> (a.getRuta() + "/" + a.getNombre()).equals(rutaOrigenCompleta))
                 .findFirst()
                 .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos: " + rutaOrigenCompleta));
 
+            String nombreArchivoDestino = rutaDestinoCompleta.substring(rutaDestinoCompleta.lastIndexOf("/") + 1);
             String rutaDirectorioDestino = rutaDestinoCompleta.substring(0, rutaDestinoCompleta.lastIndexOf("/"));
+            
+            Archivo archivoExistenteDestino = servidorBaseDatos.buscarArchivoPorNombreYRuta(nombreArchivoDestino, rutaDirectorioDestino, idUsuario);
+            
             if (!rutaDirectorioDestino.equals("/" + nombreUsuario)) {
                 String nombreDirectorioDestino = rutaDirectorioDestino.substring(rutaDirectorioDestino.lastIndexOf("/") + 1);
                 int idDirectorioPadre = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
@@ -373,15 +376,46 @@ public class ServidorAplicacion {
                 }
             }
 
-            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodo());
-            InfoNodo nodoRespaldo = null;
-            if (archivoConNodo.tieneRespaldo()) {
-                nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodoRespaldo());
+            // Obtener nodos donde está almacenado el archivo origen
+            InfoNodo nodoPrincipalOrigen = registroNodos.obtenerNodoPorNumero(archivoOrigen.getNodo());
+            InfoNodo nodoRespaldoOrigen = null;
+            if (archivoOrigen.tieneRespaldo()) {
+                nodoRespaldoOrigen = registroNodos.obtenerNodoPorNumero(archivoOrigen.getNodoRespaldo());
             }
 
+            if (archivoExistenteDestino != null) {
+                System.out.println("Archivo existente encontrado en destino, será reemplazado: " + rutaDestinoCompleta);
+                
+                InfoNodo nodoPrincipalDestino = registroNodos.obtenerNodoPorNumero(archivoExistenteDestino.getNodo());
+                InfoNodo nodoRespaldoDestino = null;
+                if (archivoExistenteDestino.tieneRespaldo()) {
+                    nodoRespaldoDestino = registroNodos.obtenerNodoPorNumero(archivoExistenteDestino.getNodoRespaldo());
+                }
+
+                List<InfoNodo> nodosParaEliminar = new ArrayList<>();
+                if (nodoPrincipalDestino != null) nodosParaEliminar.add(nodoPrincipalDestino);
+                if (nodoRespaldoDestino != null) nodosParaEliminar.add(nodoRespaldoDestino);
+
+                nodosParaEliminar.parallelStream().forEach(nodo -> {
+                    try {
+                        nodo.getInterfazRMI().eliminarArchivo(rutaDestinoCompleta);
+                        System.out.println("Archivo existente eliminado en nodo " + nodo.getNumeroNodo() + ": " + rutaDestinoCompleta);
+                    } catch (Exception e) {
+                        System.err.println("Error eliminando archivo existente en nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
+                    }
+                });
+                
+                int idArchivoExistente = servidorBaseDatos.obtenerIdArchivoPorNombre(nombreArchivoDestino);
+                if (idArchivoExistente != -1) {
+                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);
+                    System.out.println("Archivo existente eliminado de la BD: " + nombreArchivoDestino);
+                }
+            }
+
+            // Mover el archivo origen a la ubicación de destino
             List<InfoNodo> nodosParaMover = new ArrayList<>();
-            if (nodoPrincipal != null) nodosParaMover.add(nodoPrincipal);
-            if (nodoRespaldo != null) nodosParaMover.add(nodoRespaldo);
+            if (nodoPrincipalOrigen != null) nodosParaMover.add(nodoPrincipalOrigen);
+            if (nodoRespaldoOrigen != null) nodosParaMover.add(nodoRespaldoOrigen);
 
             nodosParaMover.parallelStream().forEach(nodo -> {
                 try {
@@ -392,14 +426,14 @@ public class ServidorAplicacion {
                 }
             });
 
-            String rutaDestinoParaDB = rutaDestinoCompleta.substring(0, rutaDestinoCompleta.lastIndexOf("/"));
-            
-            int idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioPorRuta(rutaDestinoParaDB, idUsuario);
+            // Actualizar la base de datos
+            int idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioPorRuta(rutaDirectorioDestino, idUsuario);
             if (idDirectorioDestino == -1) {
                 idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
             }
             
-            servidorBaseDatos.actualizarRutaYDirectorioArchivo(archivoConNodo.getNombre(), rutaDestinoParaDB, idDirectorioDestino, idUsuario);
+            // Actualizar el archivo origen con la nueva ubicación y nombre
+            servidorBaseDatos.actualizarArchivoCompleto(archivoOrigen.getNombre(), nombreArchivoDestino, rutaDirectorioDestino, idDirectorioDestino, idUsuario);
             System.out.println("Archivo movido exitosamente de " + origen + " a " + destino);
 
         } catch (Exception e) {
