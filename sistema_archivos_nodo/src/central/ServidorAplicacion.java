@@ -278,7 +278,7 @@ public class ServidorAplicacion {
 
     private Archivo procesarLeerArchivo(String nombre, String ruta, int idUsuario) {
         try {
-            ArchivoNodo archivoConNodo = null;
+            Archivo archivoConNodo = null;
             
             // Primero intentar buscar por nombre y ruta específica si se proporciona ruta
             if (ruta != null && !ruta.isEmpty()) {
@@ -287,7 +287,7 @@ public class ServidorAplicacion {
             
             // Si no se encontró con ruta específica o no se proporcionó ruta, buscar solo por nombre
             if (archivoConNodo == null) {
-                List<ArchivoNodo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
+                List<Archivo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
                 archivoConNodo = archivosConNodo.stream()
                     .filter(a -> a.getNombre().equals(nombre))
                     .findFirst()
@@ -306,13 +306,13 @@ public class ServidorAplicacion {
 
             List<InfoNodo> nodosParaLectura = new ArrayList<>();
             
-            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodo());
+            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodo());
             if (nodoPrincipal != null) {
                 nodosParaLectura.add(nodoPrincipal);
             }
             
             if (archivoConNodo.tieneRespaldo()) {
-                InfoNodo nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodoRespaldo());
+                InfoNodo nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodoRespaldo());
                 if (nodoRespaldo != null) {
                     nodosParaLectura.add(nodoRespaldo);
                 }
@@ -355,17 +355,17 @@ public class ServidorAplicacion {
             String rutaOrigenCompleta = "/" + nombreUsuario + origen;
             String rutaDestinoCompleta = "/" + nombreUsuario + destino;
             
-            List<ArchivoNodo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
-            ArchivoNodo archivoConNodo = archivosConNodo.stream()
+            List<Archivo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
+            Archivo archivoConNodo = archivosConNodo.stream()
                 .filter(a -> (a.getRuta() + "/" + a.getNombre()).equals(rutaOrigenCompleta))
                 .findFirst()
                 .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos: " + rutaOrigenCompleta));
 
             // Obtener nodos donde está almacenado el archivo
-            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodo());
+            InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodo());
             InfoNodo nodoRespaldo = null;
             if (archivoConNodo.tieneRespaldo()) {
-                nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodoRespaldo());
+                nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodoRespaldo());
             }
 
             List<InfoNodo> nodosParaMover = new ArrayList<>();
@@ -396,18 +396,18 @@ public class ServidorAplicacion {
             String nombreUsuario = servidorBaseDatos.obtenerNombreUsuario(idUsuario);
             String rutaCompleta = "/" + nombreUsuario + nombre;
             
-            List<ArchivoNodo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
-            ArchivoNodo archivoConNodo = archivosConNodo.stream()
+            List<Archivo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
+            Archivo archivoConNodo = archivosConNodo.stream()
                 .filter(a -> (a.getRuta() + "/" + a.getNombre()).equals(rutaCompleta))
                 .findFirst()
                 .orElse(null);
             
             if (archivoConNodo != null) {
                 
-                InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodo());
+                InfoNodo nodoPrincipal = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodo());
                 InfoNodo nodoRespaldo = null;
                 if (archivoConNodo.tieneRespaldo()) {
-                    nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNumeroNodoRespaldo());
+                    nodoRespaldo = registroNodos.obtenerNodoPorNumero(archivoConNodo.getNodoRespaldo());
                 }
 
                 String rutaArchivoCompleta = archivoConNodo.getRuta() + "/" + archivoConNodo.getNombre();

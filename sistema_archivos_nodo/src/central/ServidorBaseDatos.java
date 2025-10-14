@@ -109,9 +109,9 @@ public class ServidorBaseDatos {
         return archivos;
     }
 
-    public List<ArchivoNodo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
+    public List<Archivo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
         String query = "SELECT nombre, ruta, nodo, nodo_respaldo FROM Archivo WHERE Directorio_User_idUser = ?";
-        List<ArchivoNodo> archivos = new ArrayList<>();
+        List<Archivo> archivos = new ArrayList<>();
 
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -120,12 +120,11 @@ public class ServidorBaseDatos {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                ArchivoNodo archivo = new ArchivoNodo(
-                    rs.getString("nombre"),
-                    rs.getString("ruta"),
-                    rs.getInt("nodo"),
-                    rs.getObject("nodo_respaldo") != null ? rs.getInt("nodo_respaldo") : null
-                );
+                Archivo archivo = new Archivo();
+                archivo.setNombre(rs.getString("nombre"));
+                archivo.setRuta(rs.getString("ruta"));
+                archivo.setNodo(rs.getInt("nodo"));
+                archivo.setNodoRespaldo(rs.getObject("nodo_respaldo") != null ? rs.getInt("nodo_respaldo") : null);
                 archivos.add(archivo);
             }
         }
@@ -471,7 +470,7 @@ public class ServidorBaseDatos {
         }
     }
 
-    public ArchivoNodo buscarArchivoPorNombreYRuta(String nombre, String ruta, int idUsuario) throws SQLException {
+    public Archivo buscarArchivoPorNombreYRuta(String nombre, String ruta, int idUsuario) throws SQLException {
         // Construir la ruta completa con el nombre del usuario como prefijo
         String nombreUsuario = obtenerNombreUsuario(idUsuario);
         String rutaCompleta;
@@ -503,18 +502,19 @@ public class ServidorBaseDatos {
             
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                String nombreArchivo = rs.getString("nombre");
-                String rutaArchivo = rs.getString("ruta");
-                int numeroNodo = rs.getInt("nodo");
-                Integer numeroNodoRespaldo = rs.getObject("nodo_respaldo", Integer.class);
+                Archivo archivo = new Archivo();
+                archivo.setNombre(rs.getString("nombre"));
+                archivo.setRuta(rs.getString("ruta"));
+                archivo.setNodo(rs.getInt("nodo"));
+                archivo.setNodoRespaldo(rs.getObject("nodo_respaldo", Integer.class));
                 
-                return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                return archivo;
             }
         }
         return null;
     }
 
-    public ArchivoNodo buscarArchivoCompartido(String nombre, String ruta, int idUsuario) throws SQLException {
+    public Archivo buscarArchivoCompartido(String nombre, String ruta, int idUsuario) throws SQLException {
         // Para archivos compartidos, buscamos primero con la ruta exacta como está almacenada
         // luego intentamos con diferentes variaciones
         
@@ -538,12 +538,13 @@ public class ServidorBaseDatos {
                 stmt.setString(3, ruta);
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) {
-                    String nombreArchivo = rs.getString("nombre");
-                    String rutaArchivo = rs.getString("ruta");
-                    int numeroNodo = rs.getInt("nodo");
-                    Integer numeroNodoRespaldo = rs.getObject("nodo_respaldo", Integer.class);
+                    Archivo archivo = new Archivo();
+                    archivo.setNombre(rs.getString("nombre"));
+                    archivo.setRuta(rs.getString("ruta"));
+                    archivo.setNodo(rs.getInt("nodo"));
+                    archivo.setNodoRespaldo(rs.getObject("nodo_respaldo", Integer.class));
                     
-                    return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                    return archivo;
                 }
                 
                 // Si no se encuentra, intentamos con diferentes variaciones de la ruta
@@ -560,24 +561,26 @@ public class ServidorBaseDatos {
                     
                     ResultSet rsPatron = stmtPatron.executeQuery();
                     if (rsPatron.next()) {
-                        String nombreArchivo = rsPatron.getString("nombre");
-                        String rutaArchivo = rsPatron.getString("ruta");
-                        int numeroNodo = rsPatron.getInt("nodo");
-                        Integer numeroNodoRespaldo = rsPatron.getObject("nodo_respaldo", Integer.class);
+                        Archivo archivo = new Archivo();
+                        archivo.setNombre(rsPatron.getString("nombre"));
+                        archivo.setRuta(rsPatron.getString("ruta"));
+                        archivo.setNodo(rsPatron.getInt("nodo"));
+                        archivo.setNodoRespaldo(rsPatron.getObject("nodo_respaldo", Integer.class));
                         
-                        return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                        return archivo;
                     }
                 }
             } else {
                 // Si no se proporciona ruta, buscar cualquier archivo compartido con ese nombre
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) {
-                    String nombreArchivo = rs.getString("nombre");
-                    String rutaArchivo = rs.getString("ruta");
-                    int numeroNodo = rs.getInt("nodo");
-                    Integer numeroNodoRespaldo = rs.getObject("nodo_respaldo", Integer.class);
+                    Archivo archivo = new Archivo();
+                    archivo.setNombre(rs.getString("nombre"));
+                    archivo.setRuta(rs.getString("ruta"));
+                    archivo.setNodo(rs.getInt("nodo"));
+                    archivo.setNodoRespaldo(rs.getObject("nodo_respaldo", Integer.class));
                     
-                    return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                    return archivo;
                 }
             }
         }
