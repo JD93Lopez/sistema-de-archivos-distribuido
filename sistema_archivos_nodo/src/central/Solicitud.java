@@ -6,6 +6,7 @@ public class Solicitud {
     private TipoSolicitud tipo;
     private Archivo archivo;
     private List<Usuario> usuarios;
+    private String rutaDestino;
 
     public Solicitud(TipoSolicitud tipo, Archivo archivo, List<Usuario> usuarios) {
         this.tipo = tipo;
@@ -36,6 +37,14 @@ public class Solicitud {
 
     public void setUsuarios(List<Usuario> usuarios) {
         this.usuarios = usuarios;
+    }
+
+    public String getRutaDestino() {
+        return rutaDestino;
+    }
+
+    public void setRutaDestino(String rutaDestino) {
+        this.rutaDestino = rutaDestino;
     }
 
     @Override

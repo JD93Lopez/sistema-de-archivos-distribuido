@@ -1,15 +1,12 @@
 package central;
 
-/**
- * Representa un archivo con información de los nodos donde está almacenado
- */
-public class ArchivoConNodo {
+public class ArchivoNodo {
     private String nombre;
     private String ruta;
     private int numeroNodo;
-    private Integer numeroNodoRespaldo; // Puede ser null si no hay respaldo
+    private Integer numeroNodoRespaldo;
     
-    public ArchivoConNodo(String nombre, String ruta, int numeroNodo, Integer numeroNodoRespaldo) {
+    public ArchivoNodo(String nombre, String ruta, int numeroNodo, Integer numeroNodoRespaldo) {
         this.nombre = nombre;
         this.ruta = ruta;
         this.numeroNodo = numeroNodo;

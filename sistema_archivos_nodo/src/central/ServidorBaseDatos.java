@@ -109,12 +109,9 @@ public class ServidorBaseDatos {
         return archivos;
     }
 
-    /**
-     * Consulta archivos de usuario con información del nodo
-     */
-    public List<ArchivoConNodo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
+    public List<ArchivoNodo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
         String query = "SELECT nombre, ruta, nodo, nodo_respaldo FROM Archivo WHERE Directorio_User_idUser = ?";
-        List<ArchivoConNodo> archivos = new ArrayList<>();
+        List<ArchivoNodo> archivos = new ArrayList<>();
 
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -123,7 +120,7 @@ public class ServidorBaseDatos {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                ArchivoConNodo archivo = new ArchivoConNodo(
+                ArchivoNodo archivo = new ArchivoNodo(
                     rs.getString("nombre"),
                     rs.getString("ruta"),
                     rs.getInt("nodo"),
@@ -433,6 +430,45 @@ public class ServidorBaseDatos {
             }
         }
         return null;
+    }
+
+    public void actualizarRutaArchivo(String nombreArchivo, String nuevaRuta, int idUsuario) throws SQLException {
+        String query = "UPDATE Archivo SET ruta = ? WHERE nombre = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nuevaRuta);
+            stmt.setString(2, nombreArchivo);
+            stmt.setInt(3, idUsuario);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Ruta del archivo actualizada en BD: " + nombreArchivo + " -> " + nuevaRuta);
+            } else {
+                System.err.println("No se pudo actualizar la ruta del archivo: " + nombreArchivo);
+            }
+        }
+    }
+
+    public void compartirArchivo(int idArchivo, int idPropietario, int idReceptor) throws SQLException {
+        String query = "INSERT INTO Compartir (Archivo_idFile, Propietario, Receptor) VALUES (?, ?, ?)";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, idArchivo);
+            stmt.setInt(2, idPropietario);
+            stmt.setInt(3, idReceptor);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Archivo compartido registrado en BD: archivo ID " + idArchivo + 
+                                 " de usuario " + idPropietario + " a usuario " + idReceptor);
+            } else {
+                System.err.println("No se pudo registrar el compartir del archivo");
+            }
+        }
     }
 }
 
