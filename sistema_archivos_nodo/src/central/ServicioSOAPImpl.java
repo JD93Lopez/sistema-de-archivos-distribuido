@@ -19,7 +19,7 @@ public class ServicioSOAPImpl implements ServicioSOAP {
     private ServidorAplicacion servidorAplicacion;
     private AuthService authService;
     
-    private static boolean VALIDACION_TOKEN_HABILITADA = false;
+    private static boolean VALIDACION_TOKEN_HABILITADA = true;
 
     public ServicioSOAPImpl() {
         this.servidorAplicacion = new ServidorAplicacion();

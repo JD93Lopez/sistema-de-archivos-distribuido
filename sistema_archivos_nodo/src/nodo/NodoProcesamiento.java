@@ -106,10 +106,8 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                 break;
                 
             case COMPARTIR:
-                // Para compartir, simplemente registramos la acción
-                // La lógica real de compartir se maneja en la base de datos
-                System.out.println("Procesando compartir archivo '" + tarea.getArchivo().getNombre() + 
-                                 "' con el usuario " + tarea.getUsuario().getNombre());
+                // System.out.println("Procesando compartir archivo '" + tarea.getArchivo().getNombre() + 
+                //                  "' con el usuario " + tarea.getUsuario().getNombre());
                 break;
                 
             default:
