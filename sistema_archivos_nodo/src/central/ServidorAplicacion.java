@@ -66,10 +66,16 @@ public class ServidorAplicacion {
         System.out.println("Solicitud de almacenamiento encolada para: " + archivo.getNombre());
     }
 
-    public Archivo descargarArchivo(String nombre, int idUsuario) {
-        System.out.println("Solicitud de descarga para: " + nombre);
-        return procesarLeerArchivo(nombre, idUsuario);
+    public Archivo descargarArchivo(String nombre, String ruta, int idUsuario) {
+        System.out.println("Solicitud de descarga para: " + nombre + " en ruta: " + ruta);
+        return procesarLeerArchivo(nombre, ruta, idUsuario);
     }
+
+    // // Método sobrecargado para compatibilidad hacia atrás
+    // public Archivo descargarArchivo(String nombre, int idUsuario) {
+    //     System.out.println("Solicitud de descarga para: " + nombre + " (sin ruta específica)");
+    //     return procesarLeerArchivo(nombre, null, idUsuario);
+    // }
 
     public void moverArchivo(String origen, String destino, int idUsuario) {
         Archivo archivoTemp = new Archivo("temp", origen, new byte[0]);
@@ -156,7 +162,7 @@ public class ServidorAplicacion {
                 procesarAlmacenarArchivo(solicitud.getArchivo());
                 break;
             case LEER:
-                procesarLeerArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getIdUsuario());
+                procesarLeerArchivo(solicitud.getArchivo().getNombre(), solicitud.getArchivo().getRuta(), solicitud.getArchivo().getIdUsuario());
                 break;
             case MOVER:
                 procesarMoverArchivo(solicitud.getArchivo().getRuta(), solicitud.getRutaDestino(), solicitud.getArchivo().getIdUsuario());
@@ -270,15 +276,33 @@ public class ServidorAplicacion {
         }
     }
 
-    private Archivo procesarLeerArchivo(String nombre, int idUsuario) {
+    private Archivo procesarLeerArchivo(String nombre, String ruta, int idUsuario) {
         try {
-            List<ArchivoNodo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
-            ArchivoNodo archivoConNodo = archivosConNodo.stream()
-                .filter(a -> a.getNombre().equals(nombre))
-                .findFirst()
-                .orElseThrow(() -> new Exception("Archivo no encontrado en la base de datos"));
-
-            String rutaCompleta = archivoConNodo.getRuta() + "/" + archivoConNodo.getNombre();
+            ArchivoNodo archivoConNodo = null;
+            
+            // Primero intentar buscar por nombre y ruta específica si se proporciona ruta
+            if (ruta != null && !ruta.isEmpty()) {
+                archivoConNodo = servidorBaseDatos.buscarArchivoPorNombreYRuta(nombre, ruta, idUsuario);
+            }
+            
+            // Si no se encontró con ruta específica o no se proporcionó ruta, buscar solo por nombre
+            if (archivoConNodo == null) {
+                List<ArchivoNodo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
+                archivoConNodo = archivosConNodo.stream()
+                    .filter(a -> a.getNombre().equals(nombre))
+                    .findFirst()
+                    .orElse(null);
+            }
+            
+            // Si no se encontró como archivo propio, buscar en archivos compartidos
+            if (archivoConNodo == null) {
+                archivoConNodo = servidorBaseDatos.buscarArchivoCompartido(nombre, ruta, idUsuario);
+            }
+            
+            if (archivoConNodo == null) {
+                throw new Exception("Archivo no encontrado: " + nombre + 
+                    (ruta != null && !ruta.isEmpty() ? " en ruta " + ruta : ""));
+            }
 
             List<InfoNodo> nodosParaLectura = new ArrayList<>();
             
@@ -306,7 +330,7 @@ public class ServidorAplicacion {
 
             for (InfoNodo nodo : nodosParaLectura) {
                 try {
-                    Archivo archivoLeido = nodo.getInterfazRMI().leerArchivo(rutaCompleta);
+                    Archivo archivoLeido = nodo.getInterfazRMI().leerArchivo(archivoConNodo.getNombre(), archivoConNodo.getRuta());
                     System.out.println("Archivo descargado exitosamente desde nodo " + 
                                      nodo.getNumeroNodo() + " (carga: " + nodo.getMetricas().getCargaTrabajo() + "): " + nombre);
                     return archivoLeido;

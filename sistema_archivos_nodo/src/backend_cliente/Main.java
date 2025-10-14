@@ -179,8 +179,11 @@ public class Main {
                 Map<String, Object> json = JsonParser.parse(readBody(exchange));
                 String nombre = requireParam(json, "nombre");
                 String token = requireParam(json, "token");
+                
+                // Ruta es opcional, si no se proporciona será null
+                String ruta = (String) json.get("ruta");
 
-                backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, token);
+                backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, ruta, token);
                 sendJsonResponse(exchange, 200, archivoToString(archivo));
             } catch (Exception e) {
                 sendErrorResponse(exchange, 400, e.getMessage());

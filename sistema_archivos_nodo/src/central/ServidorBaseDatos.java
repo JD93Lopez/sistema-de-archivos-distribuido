@@ -470,6 +470,119 @@ public class ServidorBaseDatos {
             }
         }
     }
+
+    public ArchivoNodo buscarArchivoPorNombreYRuta(String nombre, String ruta, int idUsuario) throws SQLException {
+        // Construir la ruta completa con el nombre del usuario como prefijo
+        String nombreUsuario = obtenerNombreUsuario(idUsuario);
+        String rutaCompleta;
+        
+        if (ruta != null && !ruta.isEmpty()) {
+            if (ruta.startsWith("/")) {
+                // Si la ruta empieza con /, verificamos si ya tiene el nombre de usuario
+                if (!ruta.startsWith("/" + nombreUsuario)) {
+                    rutaCompleta = "/" + nombreUsuario + ruta;
+                } else {
+                    rutaCompleta = ruta;
+                }
+            } else {
+                // Si no empieza con /, la agregamos con el usuario
+                rutaCompleta = "/" + nombreUsuario + "/" + ruta;
+            }
+        } else {
+            rutaCompleta = "/" + nombreUsuario;
+        }
+        
+        String query = "SELECT nombre, ruta, nodo, nodo_respaldo FROM Archivo WHERE nombre = ? AND ruta = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nombre);
+            stmt.setString(2, rutaCompleta);
+            stmt.setInt(3, idUsuario);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String nombreArchivo = rs.getString("nombre");
+                String rutaArchivo = rs.getString("ruta");
+                int numeroNodo = rs.getInt("nodo");
+                Integer numeroNodoRespaldo = rs.getObject("nodo_respaldo", Integer.class);
+                
+                return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+            }
+        }
+        return null;
+    }
+
+    public ArchivoNodo buscarArchivoCompartido(String nombre, String ruta, int idUsuario) throws SQLException {
+        // Para archivos compartidos, buscamos primero con la ruta exacta como está almacenada
+        // luego intentamos con diferentes variaciones
+        
+        String query = "SELECT a.nombre, a.ruta, a.nodo, a.nodo_respaldo " +
+                      "FROM Archivo a " +
+                      "INNER JOIN Compartir c ON a.idFile = c.Archivo_idFile " +
+                      "WHERE a.nombre = ? AND c.Receptor = ?";
+        
+        if (ruta != null && !ruta.isEmpty()) {
+            query += " AND a.ruta = ?";
+        }
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nombre);
+            stmt.setInt(2, idUsuario);
+            
+            if (ruta != null && !ruta.isEmpty()) {
+                // Primero intentamos con la ruta exacta
+                stmt.setString(3, ruta);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    String nombreArchivo = rs.getString("nombre");
+                    String rutaArchivo = rs.getString("ruta");
+                    int numeroNodo = rs.getInt("nodo");
+                    Integer numeroNodoRespaldo = rs.getObject("nodo_respaldo", Integer.class);
+                    
+                    return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                }
+                
+                // Si no se encuentra, intentamos con diferentes variaciones de la ruta
+                // Buscar archivos compartidos que contengan la ruta proporcionada
+                String queryPatron = "SELECT a.nombre, a.ruta, a.nodo, a.nodo_respaldo " +
+                                   "FROM Archivo a " +
+                                   "INNER JOIN Compartir c ON a.idFile = c.Archivo_idFile " +
+                                   "WHERE a.nombre = ? AND c.Receptor = ? AND a.ruta LIKE ?";
+                
+                try (PreparedStatement stmtPatron = conn.prepareStatement(queryPatron)) {
+                    stmtPatron.setString(1, nombre);
+                    stmtPatron.setInt(2, idUsuario);
+                    stmtPatron.setString(3, "%" + ruta + "%");
+                    
+                    ResultSet rsPatron = stmtPatron.executeQuery();
+                    if (rsPatron.next()) {
+                        String nombreArchivo = rsPatron.getString("nombre");
+                        String rutaArchivo = rsPatron.getString("ruta");
+                        int numeroNodo = rsPatron.getInt("nodo");
+                        Integer numeroNodoRespaldo = rsPatron.getObject("nodo_respaldo", Integer.class);
+                        
+                        return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                    }
+                }
+            } else {
+                // Si no se proporciona ruta, buscar cualquier archivo compartido con ese nombre
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    String nombreArchivo = rs.getString("nombre");
+                    String rutaArchivo = rs.getString("ruta");
+                    int numeroNodo = rs.getInt("nodo");
+                    Integer numeroNodoRespaldo = rs.getObject("nodo_respaldo", Integer.class);
+                    
+                    return new ArchivoNodo(nombreArchivo, rutaArchivo, numeroNodo, numeroNodoRespaldo);
+                }
+            }
+        }
+        return null;
+    }
 }
 
 

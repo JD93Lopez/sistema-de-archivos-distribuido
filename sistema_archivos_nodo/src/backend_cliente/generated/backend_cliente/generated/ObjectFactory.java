@@ -211,6 +211,14 @@ public class ObjectFactory {
     }
 
     /**
+     * Create an instance of {@link NodoArbol }
+     * 
+     */
+    public NodoArbol createNodoArbol() {
+        return new NodoArbol();
+    }
+
+    /**
      * Create an instance of {@link Usuario }
      * 
      */

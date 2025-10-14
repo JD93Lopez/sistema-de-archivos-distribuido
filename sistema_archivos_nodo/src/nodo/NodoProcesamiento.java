@@ -135,9 +135,17 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     @Override
-    public Archivo leerArchivo(String nombre) throws java.rmi.RemoteException {
+    public Archivo leerArchivo(String nombre, String ruta) throws java.rmi.RemoteException {
         try {
-            Path rutaCompleta = Paths.get(directorioRaiz, nombre);
+            Path rutaCompleta;
+            if (ruta != null && !ruta.isEmpty()) {
+                // Si se proporciona ruta, usarla junto con el nombre
+                rutaCompleta = Paths.get(directorioRaiz, ruta, nombre);
+            } else {
+                // Si no se proporciona ruta, usar solo el nombre (comportamiento anterior)
+                rutaCompleta = Paths.get(directorioRaiz, nombre);
+            }
+            
             System.out.println("Leyendo archivo desde: " + rutaCompleta);
             
             if (!Files.exists(rutaCompleta)) {

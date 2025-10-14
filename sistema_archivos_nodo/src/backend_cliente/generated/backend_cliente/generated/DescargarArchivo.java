@@ -17,6 +17,7 @@ import javax.xml.bind.annotation.XmlType;
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
  *       &lt;sequence>
  *         &lt;element name="nombre" type="{http://www.w3.org/2001/XMLSchema}string" minOccurs="0"/>
+ *         &lt;element name="ruta" type="{http://www.w3.org/2001/XMLSchema}string" minOccurs="0"/>
  *         &lt;element name="token" type="{http://www.w3.org/2001/XMLSchema}string" minOccurs="0"/>
  *       &lt;/sequence>
  *     &lt;/restriction>
@@ -29,11 +30,13 @@ import javax.xml.bind.annotation.XmlType;
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "descargarArchivo", propOrder = {
     "nombre",
+    "ruta",
     "token"
 })
 public class DescargarArchivo {
 
     protected String nombre;
+    protected String ruta;
     protected String token;
 
     /**
@@ -58,6 +61,30 @@ public class DescargarArchivo {
      */
     public void setNombre(String value) {
         this.nombre = value;
+    }
+
+    /**
+     * Gets the value of the ruta property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link String }
+     *     
+     */
+    public String getRuta() {
+        return ruta;
+    }
+
+    /**
+     * Sets the value of the ruta property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link String }
+     *     
+     */
+    public void setRuta(String value) {
+        this.ruta = value;
     }
 
     /**
