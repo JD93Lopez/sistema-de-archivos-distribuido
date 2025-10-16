@@ -71,12 +71,6 @@ public class ServidorAplicacion {
         return procesarLeerArchivo(nombre, ruta, idUsuario);
     }
 
-    // // Método sobrecargado para compatibilidad hacia atrás
-    // public Archivo descargarArchivo(String nombre, int idUsuario) {
-    //     System.out.println("Solicitud de descarga para: " + nombre + " (sin ruta específica)");
-    //     return procesarLeerArchivo(nombre, null, idUsuario);
-    // }
-
     public void moverArchivo(String origen, String destino, int idUsuario) {
         Archivo archivoTemp = new Archivo("temp", origen, new byte[0]);
         archivoTemp.setIdUsuario(idUsuario);
@@ -280,12 +274,10 @@ public class ServidorAplicacion {
         try {
             Archivo archivoConNodo = null;
             
-            // Primero intentar buscar por nombre y ruta específica si se proporciona ruta
             if (ruta != null && !ruta.isEmpty()) {
                 archivoConNodo = servidorBaseDatos.buscarArchivoPorNombreYRuta(nombre, ruta, idUsuario);
             }
             
-            // Si no se encontró con ruta específica o no se proporcionó ruta, buscar solo por nombre
             if (archivoConNodo == null) {
                 List<Archivo> archivosConNodo = servidorBaseDatos.consultarArchivosUsuarioConNodo(idUsuario);
                 archivoConNodo = archivosConNodo.stream()
@@ -294,7 +286,6 @@ public class ServidorAplicacion {
                     .orElse(null);
             }
             
-            // Si no se encontró como archivo propio, buscar en archivos compartidos
             if (archivoConNodo == null) {
                 archivoConNodo = servidorBaseDatos.buscarArchivoCompartido(nombre, ruta, idUsuario);
             }
@@ -376,7 +367,7 @@ public class ServidorAplicacion {
                 }
             }
 
-            // Obtener nodos donde está almacenado el archivo origen
+            // Obtener nodos donde está almacenado el archivo
             InfoNodo nodoPrincipalOrigen = registroNodos.obtenerNodoPorNumero(archivoOrigen.getNodo());
             InfoNodo nodoRespaldoOrigen = null;
             if (archivoOrigen.tieneRespaldo()) {
@@ -407,12 +398,11 @@ public class ServidorAplicacion {
                 
                 int idArchivoExistente = servidorBaseDatos.obtenerIdArchivoPorNombre(nombreArchivoDestino);
                 if (idArchivoExistente != -1) {
-                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);
+                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);//TODO ojo compartidos
                     System.out.println("Archivo existente eliminado de la BD: " + nombreArchivoDestino);
                 }
             }
 
-            // Mover el archivo origen a la ubicación de destino
             List<InfoNodo> nodosParaMover = new ArrayList<>();
             if (nodoPrincipalOrigen != null) nodosParaMover.add(nodoPrincipalOrigen);
             if (nodoRespaldoOrigen != null) nodosParaMover.add(nodoRespaldoOrigen);
@@ -426,13 +416,11 @@ public class ServidorAplicacion {
                 }
             });
 
-            // Actualizar la base de datos
             int idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioPorRuta(rutaDirectorioDestino, idUsuario);
             if (idDirectorioDestino == -1) {
                 idDirectorioDestino = servidorBaseDatos.obtenerIdDirectorioUsuario(idUsuario);
             }
             
-            // Actualizar el archivo origen con la nueva ubicación y nombre
             servidorBaseDatos.actualizarArchivoCompleto(archivoOrigen.getNombre(), nombreArchivoDestino, rutaDirectorioDestino, idDirectorioDestino, idUsuario);
             System.out.println("Archivo movido exitosamente de " + origen + " a " + destino);
 

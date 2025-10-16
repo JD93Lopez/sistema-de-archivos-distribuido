@@ -87,14 +87,39 @@ public class ServidorBaseDatos {
     }
 
     public void eliminarArchivo(int idArchivo) throws SQLException {
-        String query = "DELETE FROM Archivo WHERE idFile = ?";
-
-        try (Connection conn = ConexionDB.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setInt(1, idArchivo);
-            stmt.executeUpdate();
-            System.out.println("Archivo eliminado de la base de datos: " + idArchivo);
+        try (Connection conn = ConexionDB.getConnection()) {
+            // Iniciar transacción
+            conn.setAutoCommit(false);
+            
+            try {
+                String queryEliminarCompartir = "DELETE FROM Compartir WHERE Archivo_idFile = ?";
+                try (PreparedStatement stmtCompartir = conn.prepareStatement(queryEliminarCompartir)) {
+                    stmtCompartir.setInt(1, idArchivo);
+                    int filasCompartirEliminadas = stmtCompartir.executeUpdate();
+                    if (filasCompartirEliminadas > 0) {
+                        System.out.println("Eliminados " + filasCompartirEliminadas + " registros de compartir para archivo ID: " + idArchivo);
+                    }
+                }
+                
+                String queryEliminarArchivo = "DELETE FROM Archivo WHERE idFile = ?";
+                try (PreparedStatement stmtArchivo = conn.prepareStatement(queryEliminarArchivo)) {
+                    stmtArchivo.setInt(1, idArchivo);
+                    int filasArchivoEliminadas = stmtArchivo.executeUpdate();
+                    if (filasArchivoEliminadas > 0) {
+                        System.out.println("Archivo eliminado de la base de datos: " + idArchivo);
+                    } else {
+                        System.err.println("No se encontró el archivo con ID: " + idArchivo);
+                    }
+                }
+                
+                conn.commit();
+                
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         }
     }
 
