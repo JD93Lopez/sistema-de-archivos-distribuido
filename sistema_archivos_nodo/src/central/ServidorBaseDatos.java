@@ -703,11 +703,11 @@ public class ServidorBaseDatos {
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 Object[] elemento = new Object[5];
-                elemento[0] = rs.getString("tipo");        // tipo
-                elemento[1] = rs.getString("nombre");      // nombre
-                elemento[2] = rs.getString("ruta");        // ruta
-                elemento[3] = rs.getLong("tamano");        // tamano
-                elemento[4] = rs.getInt("idPadre");        // idPadre
+                elemento[0] = rs.getString("tipo");        
+                elemento[1] = rs.getString("nombre");    
+                elemento[2] = rs.getString("ruta");        
+                elemento[3] = rs.getLong("tamano");        
+                elemento[4] = rs.getInt("idPadre");        
                 elementos.add(elemento);
             }
         }

@@ -98,13 +98,10 @@ public class ServidorAplicacion {
         ArbolEspacio arbolEspacio = new ArbolEspacio(1_000_000_000L);
 
         try {
-            // Obtener la estructura completa (directorios + archivos) desde la base de datos
             List<Object[]> elementos = servidorBaseDatos.obtenerEstructuraCompleta(idUsuario);
             
-            // Construir el árbol jerárquico
             arbolEspacio.construirArbolDesdeEstructura(elementos);
             
-            // Calcular el espacio usado
             arbolEspacio.calcularEspacioUsado();
             
             System.out.println("Espacio consultado para usuario " + idUsuario + ": " + 

@@ -29,28 +29,22 @@ public class ArbolEspacio {
     public void setEspacioUsado(long espacioUsado) { this.espacioUsado = espacioUsado; }
 
     public void agregarArchivo(String ruta, long tamano) {
-        // Implementación opcional para compatibilidad hacia atrás
     }
 
     public void eliminarArchivo(String ruta) {
-        // Implementación opcional para compatibilidad hacia atrás
     }
 
     public void construirArbolDesdeEstructura(List<Object[]> elementos) {
-        // Crear un mapa para acceso rápido a nodos por ruta
         Map<String, NodoArbol> nodosMap = new HashMap<>();
         
-        // Agregar la raíz al mapa
         nodosMap.put("/", raiz);
         
-        // Procesar elementos ordenados por ruta
         for (Object[] elemento : elementos) {
             String tipo = (String) elemento[0];
             String nombre = (String) elemento[1];
             String ruta = (String) elemento[2];
             long tamano = (Long) elemento[3];
             
-            // Normalizar la ruta
             if (!ruta.startsWith("/")) {
                 ruta = "/" + ruta;
             }
@@ -58,7 +52,6 @@ public class ArbolEspacio {
                 ruta = ruta + "/";
             }
             
-            // Construir la ruta completa
             String rutaCompleta;
             if (tipo.equals("archivo")) {
                 rutaCompleta = ruta.endsWith("/") ? ruta + nombre : ruta + "/" + nombre;
@@ -66,10 +59,8 @@ public class ArbolEspacio {
                 rutaCompleta = ruta;
             }
             
-            // Crear todos los directorios padre si no existen
             crearDirectoriosPadre(rutaCompleta, nodosMap);
             
-            // Crear el nodo actual
             NodoArbol nodoActual;
             if (tipo.equals("archivo")) {
                 nodoActual = new NodoArbol(nombre + " (" + formatearTamano(tamano) + ")", tamano);
@@ -77,7 +68,6 @@ public class ArbolEspacio {
                 nodoActual = new NodoArbol(nombre + "/", 0);
             }
             
-            // Encontrar el padre y agregar este nodo
             String rutaPadre = obtenerRutaPadre(rutaCompleta);
             NodoArbol nodoPadre = nodosMap.get(rutaPadre);
             
@@ -85,7 +75,6 @@ public class ArbolEspacio {
                 nodoPadre.agregarHijo(nodoActual);
                 nodosMap.put(rutaCompleta, nodoActual);
             } else {
-                // Si no encontramos el padre, agregarlo a la raíz
                 raiz.agregarHijo(nodoActual);
                 nodosMap.put(rutaCompleta, nodoActual);
             }
@@ -117,7 +106,6 @@ public class ArbolEspacio {
             return "/";
         }
         
-        // Remover la última barra si existe
         if (ruta.endsWith("/")) {
             ruta = ruta.substring(0, ruta.length() - 1);
         }
@@ -167,14 +155,12 @@ public class ArbolEspacio {
     private void construirArbolString(NodoArbol nodo, StringBuilder sb, String prefijo, boolean esUltimo) {
         if (nodo == null) return;
         
-        // Símbolo para mostrar la estructura del árbol
-        String simbolo = esUltimo ? "└── " : "├── ";
+        String simbolo = esUltimo ? "|__ " : "|-- ";
         sb.append(prefijo).append(simbolo).append(nodo.getNombre()).append("\n");
         
         // Nuevo prefijo para los hijos
-        String nuevoPrefijo = prefijo + (esUltimo ? "    " : "│   ");
-        
-        // Procesar los hijos
+        String nuevoPrefijo = prefijo + (esUltimo ? "    " : "|   ");
+
         List<NodoArbol> hijos = nodo.getHijos();
         for (int i = 0; i < hijos.size(); i++) {
             boolean esUltimoHijo = (i == hijos.size() - 1);

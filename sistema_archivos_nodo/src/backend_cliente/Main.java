@@ -74,7 +74,7 @@ public class Main {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("=== REPORTE DE ESPACIO CONSUMIDO ===\n");
+        sb.append("REPORTE DE ESPACIO CONSUMIDO \n");
         sb.append("Espacio Total: ").append(formatearTamano(arbol.getEspacioTotal())).append("\n");
         sb.append("Espacio Usado: ").append(formatearTamano(arbol.getEspacioUsado())).append("\n");
         sb.append("Espacio Libre: ").append(formatearTamano(arbol.getEspacioTotal() - arbol.getEspacioUsado())).append("\n");
@@ -84,7 +84,7 @@ public class Main {
             sb.append("Porcentaje Usado: ").append(String.format("%.2f", porcentaje)).append("%\n");
         }
         
-        sb.append("\n=== ESTRUCTURA DE ARCHIVOS ===\n");
+        sb.append("\nESTRUCTURA DE ARCHIVOS \n");
         
         if (arbol.getRaiz() != null) {
             construirArbolString(arbol.getRaiz(), sb, "", true);
