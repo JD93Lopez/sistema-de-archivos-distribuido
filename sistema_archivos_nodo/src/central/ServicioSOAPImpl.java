@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import java.sql.SQLException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 
 @WebService
 public class ServicioSOAPImpl implements ServicioSOAP {
@@ -125,11 +128,43 @@ public class ServicioSOAPImpl implements ServicioSOAP {
         return servidorAplicacion.consultarEspacioConsumido(userId);
     }
 
-    public static void main(String[] args) {
+    private static String obtenerIPLocal() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface networkInterface = interfaces.nextElement();
+                
+                if (networkInterface.isLoopback() || !networkInterface.isUp()) {
+                    continue;
+                }
+                
+                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+                    
+                    if (!address.isLoopbackAddress() && 
+                        !address.isLinkLocalAddress() && 
+                        address.getHostAddress().indexOf(':') == -1) {
+                        return address.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error al obtener IP local: " + e.getMessage());
+        }
         
-        Endpoint.publish("http://localhost:8080/ServicioSOAP", new ServicioSOAPImpl());
-        System.out.println(" Servicio SOAP listo y esperando solicitudes...");
+        return "localhost";
+    }
 
+    public static void main(String[] args) {
+        String ipLocal = obtenerIPLocal();
+        String url = "http://" + ipLocal + ":8080/ServicioSOAP";
+        
+        Endpoint.publish(url, new ServicioSOAPImpl());
+        System.out.println("Servicio SOAP listo y esperando solicitudes...");
+        System.out.println(" URL del servicio: " + url);
+        System.out.println(" WSDL disponible en: " + url + "?wsdl");
+        System.out.println(" IP de la máquina: " + ipLocal);
     }
 }
 
