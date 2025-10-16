@@ -88,7 +88,6 @@ public class ServidorBaseDatos {
 
     public void eliminarArchivo(int idArchivo) throws SQLException {
         try (Connection conn = ConexionDB.getConnection()) {
-            // Iniciar transacción
             conn.setAutoCommit(false);
             
             try {
@@ -680,6 +679,40 @@ public class ServidorBaseDatos {
             }
         }
         return null;
+    }
+
+    public List<Object[]> obtenerEstructuraCompleta(int idUsuario) throws SQLException {
+        String query = "SELECT 'directorio' as tipo, d.nombre, d.ruta, 0 as tamano, d.idPadre " +
+                      "FROM Directorio d " +
+                      "WHERE d.User_idUser = ? " +
+                      "UNION ALL " +
+                      "SELECT 'archivo' as tipo, a.nombre, a.ruta, a.tamano, d.idDirectorio as idPadre " +
+                      "FROM Archivo a " +
+                      "INNER JOIN Directorio d ON a.Directorio_idDirectorio = d.idDirectorio " +
+                      "WHERE a.Directorio_User_idUser = ? " +
+                      "ORDER BY ruta, nombre";
+        
+        List<Object[]> elementos = new ArrayList<>();
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, idUsuario);
+            stmt.setInt(2, idUsuario);
+            
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                Object[] elemento = new Object[5];
+                elemento[0] = rs.getString("tipo");        
+                elemento[1] = rs.getString("nombre");    
+                elemento[2] = rs.getString("ruta");        
+                elemento[3] = rs.getLong("tamano");        
+                elemento[4] = rs.getInt("idPadre");        
+                elementos.add(elemento);
+            }
+        }
+        
+        return elementos;
     }
 }
 

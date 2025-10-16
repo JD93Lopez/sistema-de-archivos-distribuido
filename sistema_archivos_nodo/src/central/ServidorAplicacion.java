@@ -1,8 +1,5 @@
 package central;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -100,25 +97,22 @@ public class ServidorAplicacion {
     public ArbolEspacio consultarEspacioConsumido(int idUsuario) {
         ArbolEspacio arbolEspacio = new ArbolEspacio(1_000_000_000L);
 
-        String query = "SELECT nombre, ruta, tamano FROM Archivo WHERE Directorio_User_idUser = ?";
-        try (Connection conn = ConexionDB.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setInt(1, idUsuario);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                String nombre = rs.getString("nombre");
-                String ruta = rs.getString("ruta");
-                long tamano = rs.getLong("tamano");
-                arbolEspacio.agregarArchivo(ruta + "/" + nombre, tamano);
-            }
+        try {
+            List<Object[]> elementos = servidorBaseDatos.obtenerEstructuraCompleta(idUsuario);
+            
+            arbolEspacio.construirArbolDesdeEstructura(elementos);
+            
+            arbolEspacio.calcularEspacioUsado();
+            
+            System.out.println("Espacio consultado para usuario " + idUsuario + ": " + 
+                             arbolEspacio.getEspacioUsado() + " bytes");
+            
         } catch (SQLException e) {
             System.err.println("Error al consultar el espacio consumido: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
 
-        arbolEspacio.calcularEspacioUsado();
         return arbolEspacio;
     }
 
@@ -398,7 +392,7 @@ public class ServidorAplicacion {
                 
                 int idArchivoExistente = servidorBaseDatos.obtenerIdArchivoPorNombre(nombreArchivoDestino);
                 if (idArchivoExistente != -1) {
-                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);//TODO ojo compartidos
+                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);
                     System.out.println("Archivo existente eliminado de la BD: " + nombreArchivoDestino);
                 }
             }

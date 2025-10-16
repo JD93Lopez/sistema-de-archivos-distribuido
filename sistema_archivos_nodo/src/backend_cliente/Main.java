@@ -59,6 +59,71 @@ public class Main {
         }
     }
 
+    static void sendTextResponse(HttpExchange exchange, int code, String text) throws IOException {
+        byte[] response = text.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
+        exchange.sendResponseHeaders(code, response.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(response);
+        }
+    }
+
+    static String arbolEspacioToString(backend_cliente.generated.ArbolEspacio arbol) {
+        if (arbol == null) {
+            return "Arbol de espacio no disponible";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("REPORTE DE ESPACIO CONSUMIDO \n");
+        sb.append("Espacio Total: ").append(formatearTamano(arbol.getEspacioTotal())).append("\n");
+        sb.append("Espacio Usado: ").append(formatearTamano(arbol.getEspacioUsado())).append("\n");
+        sb.append("Espacio Libre: ").append(formatearTamano(arbol.getEspacioTotal() - arbol.getEspacioUsado())).append("\n");
+        
+        if (arbol.getEspacioTotal() > 0) {
+            double porcentaje = (arbol.getEspacioUsado() * 100.0) / arbol.getEspacioTotal();
+            sb.append("Porcentaje Usado: ").append(String.format("%.2f", porcentaje)).append("%\n");
+        }
+        
+        sb.append("\nESTRUCTURA DE ARCHIVOS \n");
+        
+        if (arbol.getRaiz() != null) {
+            construirArbolString(arbol.getRaiz(), sb, "", true);
+        } else {
+            sb.append("No hay archivos en el sistema\n");
+        }
+        
+        return sb.toString();
+    }
+
+    private static void construirArbolString(backend_cliente.generated.NodoArbol nodo, StringBuilder sb, String prefijo, boolean esUltimo) {
+        if (nodo == null) return;
+        
+        String simbolo = esUltimo ? "|__ " : "|-- ";
+        String nombreNodo = nodo.getNombre() != null ? nodo.getNombre() : "Sin nombre";
+        sb.append(prefijo).append(simbolo).append(nombreNodo).append("\n");
+        
+        String nuevoPrefijo = prefijo + (esUltimo ? "    " : "|   ");
+        
+        if (nodo.getHijos() != null) {
+            for (int i = 0; i < nodo.getHijos().size(); i++) {
+                boolean esUltimoHijo = (i == nodo.getHijos().size() - 1);
+                construirArbolString(nodo.getHijos().get(i), sb, nuevoPrefijo, esUltimoHijo);
+            }
+        }
+    }
+
+    private static String formatearTamano(long tamano) {
+        if (tamano < 1024) {
+            return tamano + " B";
+        } else if (tamano < 1024 * 1024) {
+            return String.format("%.1f KB", tamano / 1024.0);
+        } else if (tamano < 1024 * 1024 * 1024) {
+            return String.format("%.1f MB", tamano / (1024.0 * 1024.0));
+        } else {
+            return String.format("%.1f GB", tamano / (1024.0 * 1024.0 * 1024.0));
+        }
+    }
+
     static void sendErrorResponse(HttpExchange exchange, int code, String message) throws IOException {
         sendJsonResponse(exchange, code, Collections.singletonMap("error", message));
     }
@@ -180,7 +245,6 @@ public class Main {
                 String nombre = requireParam(json, "nombre");
                 String token = requireParam(json, "token");
                 
-                // Ruta es opcional, si no se proporciona será null
                 String ruta = (String) json.get("ruta");
 
                 backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, ruta, token);
@@ -286,7 +350,16 @@ public class Main {
                 }
 
                 backend_cliente.generated.ArbolEspacio arbol = soapPort.consultarEspacioConsumido(token);
-                sendJsonResponse(exchange, 200, arbol);
+                
+                // Verificar si se debe devolver como texto o JSON
+                String format = getQueryParam(exchange.getRequestURI().getQuery(), "format");
+                if ("text".equals(format)) {
+                    String arbolTexto = arbolEspacioToString(arbol);
+                    sendTextResponse(exchange, 200, arbolTexto);
+                } else {
+                    String arbolTexto = arbolEspacioToString(arbol);
+                    sendTextResponse(exchange, 200, arbolTexto);
+                }
             } catch (Exception e) {
                 sendErrorResponse(exchange, 400, e.getMessage());
             }

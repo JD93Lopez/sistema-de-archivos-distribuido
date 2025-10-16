@@ -19,6 +19,8 @@ import javax.xml.bind.annotation.XmlType;
  *         &lt;element name="contenido" type="{http://www.w3.org/2001/XMLSchema}base64Binary" minOccurs="0"/>
  *         &lt;element name="id" type="{http://www.w3.org/2001/XMLSchema}int"/>
  *         &lt;element name="idUsuario" type="{http://www.w3.org/2001/XMLSchema}int"/>
+ *         &lt;element name="nodo" type="{http://www.w3.org/2001/XMLSchema}int"/>
+ *         &lt;element name="nodoRespaldo" type="{http://www.w3.org/2001/XMLSchema}int" minOccurs="0"/>
  *         &lt;element name="nombre" type="{http://www.w3.org/2001/XMLSchema}string" minOccurs="0"/>
  *         &lt;element name="ruta" type="{http://www.w3.org/2001/XMLSchema}string" minOccurs="0"/>
  *       &lt;/sequence>
@@ -34,6 +36,8 @@ import javax.xml.bind.annotation.XmlType;
     "contenido",
     "id",
     "idUsuario",
+    "nodo",
+    "nodoRespaldo",
     "nombre",
     "ruta"
 })
@@ -42,6 +46,8 @@ public class Archivo {
     protected byte[] contenido;
     protected int id;
     protected int idUsuario;
+    protected int nodo;
+    protected Integer nodoRespaldo;
     protected String nombre;
     protected String ruta;
 
@@ -97,6 +103,46 @@ public class Archivo {
      */
     public void setIdUsuario(int value) {
         this.idUsuario = value;
+    }
+
+    /**
+     * Gets the value of the nodo property.
+     * 
+     */
+    public int getNodo() {
+        return nodo;
+    }
+
+    /**
+     * Sets the value of the nodo property.
+     * 
+     */
+    public void setNodo(int value) {
+        this.nodo = value;
+    }
+
+    /**
+     * Gets the value of the nodoRespaldo property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Integer }
+     *     
+     */
+    public Integer getNodoRespaldo() {
+        return nodoRespaldo;
+    }
+
+    /**
+     * Sets the value of the nodoRespaldo property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Integer }
+     *     
+     */
+    public void setNodoRespaldo(Integer value) {
+        this.nodoRespaldo = value;
     }
 
     /**

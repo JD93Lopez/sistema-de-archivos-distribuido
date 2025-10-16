@@ -26,24 +26,42 @@ public interface ServicioSOAPImpl {
 
     /**
      * 
-     * @param contrasena
+     * @param ruta
      * @param nombre
-     * @param email
+     * @param token
      * @return
-     *     returns java.lang.String
+     *     returns backend_cliente.generated.Archivo
      */
     @WebMethod
     @WebResult(targetNamespace = "")
-    @RequestWrapper(localName = "registrarse", targetNamespace = "http://central/", className = "backend_cliente.generated.Registrarse")
-    @ResponseWrapper(localName = "registrarseResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.RegistrarseResponse")
-    @Action(input = "http://central/ServicioSOAPImpl/registrarseRequest", output = "http://central/ServicioSOAPImpl/registrarseResponse")
-    public String registrarse(
+    @RequestWrapper(localName = "descargarArchivo", targetNamespace = "http://central/", className = "backend_cliente.generated.DescargarArchivo")
+    @ResponseWrapper(localName = "descargarArchivoResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.DescargarArchivoResponse")
+    @Action(input = "http://central/ServicioSOAPImpl/descargarArchivoRequest", output = "http://central/ServicioSOAPImpl/descargarArchivoResponse")
+    public Archivo descargarArchivo(
         @WebParam(name = "nombre", targetNamespace = "")
         String nombre,
-        @WebParam(name = "email", targetNamespace = "")
-        String email,
-        @WebParam(name = "contrasena", targetNamespace = "")
-        String contrasena);
+        @WebParam(name = "ruta", targetNamespace = "")
+        String ruta,
+        @WebParam(name = "token", targetNamespace = "")
+        String token);
+
+    /**
+     * 
+     * @param origen
+     * @param destino
+     * @param token
+     */
+    @WebMethod
+    @RequestWrapper(localName = "moverArchivo", targetNamespace = "http://central/", className = "backend_cliente.generated.MoverArchivo")
+    @ResponseWrapper(localName = "moverArchivoResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.MoverArchivoResponse")
+    @Action(input = "http://central/ServicioSOAPImpl/moverArchivoRequest", output = "http://central/ServicioSOAPImpl/moverArchivoResponse")
+    public void moverArchivo(
+        @WebParam(name = "origen", targetNamespace = "")
+        String origen,
+        @WebParam(name = "destino", targetNamespace = "")
+        String destino,
+        @WebParam(name = "token", targetNamespace = "")
+        String token);
 
     /**
      * 
@@ -80,24 +98,6 @@ public interface ServicioSOAPImpl {
 
     /**
      * 
-     * @param origen
-     * @param destino
-     * @param token
-     */
-    @WebMethod
-    @RequestWrapper(localName = "moverArchivo", targetNamespace = "http://central/", className = "backend_cliente.generated.MoverArchivo")
-    @ResponseWrapper(localName = "moverArchivoResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.MoverArchivoResponse")
-    @Action(input = "http://central/ServicioSOAPImpl/moverArchivoRequest", output = "http://central/ServicioSOAPImpl/moverArchivoResponse")
-    public void moverArchivo(
-        @WebParam(name = "origen", targetNamespace = "")
-        String origen,
-        @WebParam(name = "destino", targetNamespace = "")
-        String destino,
-        @WebParam(name = "token", targetNamespace = "")
-        String token);
-
-    /**
-     * 
      * @param nombre
      * @param token
      */
@@ -108,42 +108,6 @@ public interface ServicioSOAPImpl {
     public void eliminarArchivo(
         @WebParam(name = "nombre", targetNamespace = "")
         String nombre,
-        @WebParam(name = "token", targetNamespace = "")
-        String token);
-
-    /**
-     * 
-     * @param ruta
-     * @param nombre
-     * @param token
-     * @return
-     *     returns backend_cliente.generated.Archivo
-     */
-    @WebMethod
-    @WebResult(targetNamespace = "")
-    @RequestWrapper(localName = "descargarArchivo", targetNamespace = "http://central/", className = "backend_cliente.generated.DescargarArchivo")
-    @ResponseWrapper(localName = "descargarArchivoResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.DescargarArchivoResponse")
-    @Action(input = "http://central/ServicioSOAPImpl/descargarArchivoRequest", output = "http://central/ServicioSOAPImpl/descargarArchivoResponse")
-    public Archivo descargarArchivo(
-        @WebParam(name = "nombre", targetNamespace = "")
-        String nombre,
-        @WebParam(name = "ruta", targetNamespace = "")
-        String ruta,
-        @WebParam(name = "token", targetNamespace = "")
-        String token);
-
-    /**
-     * 
-     * @param ruta
-     * @param token
-     */
-    @WebMethod
-    @RequestWrapper(localName = "crearDirectorio", targetNamespace = "http://central/", className = "backend_cliente.generated.CrearDirectorio")
-    @ResponseWrapper(localName = "crearDirectorioResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.CrearDirectorioResponse")
-    @Action(input = "http://central/ServicioSOAPImpl/crearDirectorioRequest", output = "http://central/ServicioSOAPImpl/crearDirectorioResponse")
-    public void crearDirectorio(
-        @WebParam(name = "ruta", targetNamespace = "")
-        String ruta,
         @WebParam(name = "token", targetNamespace = "")
         String token);
 
@@ -162,6 +126,42 @@ public interface ServicioSOAPImpl {
         Archivo archivo,
         @WebParam(name = "usuario", targetNamespace = "")
         Usuario usuario,
+        @WebParam(name = "token", targetNamespace = "")
+        String token);
+
+    /**
+     * 
+     * @param contrasena
+     * @param nombre
+     * @param email
+     * @return
+     *     returns java.lang.String
+     */
+    @WebMethod
+    @WebResult(targetNamespace = "")
+    @RequestWrapper(localName = "registrarse", targetNamespace = "http://central/", className = "backend_cliente.generated.Registrarse")
+    @ResponseWrapper(localName = "registrarseResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.RegistrarseResponse")
+    @Action(input = "http://central/ServicioSOAPImpl/registrarseRequest", output = "http://central/ServicioSOAPImpl/registrarseResponse")
+    public String registrarse(
+        @WebParam(name = "nombre", targetNamespace = "")
+        String nombre,
+        @WebParam(name = "email", targetNamespace = "")
+        String email,
+        @WebParam(name = "contrasena", targetNamespace = "")
+        String contrasena);
+
+    /**
+     * 
+     * @param ruta
+     * @param token
+     */
+    @WebMethod
+    @RequestWrapper(localName = "crearDirectorio", targetNamespace = "http://central/", className = "backend_cliente.generated.CrearDirectorio")
+    @ResponseWrapper(localName = "crearDirectorioResponse", targetNamespace = "http://central/", className = "backend_cliente.generated.CrearDirectorioResponse")
+    @Action(input = "http://central/ServicioSOAPImpl/crearDirectorioRequest", output = "http://central/ServicioSOAPImpl/crearDirectorioResponse")
+    public void crearDirectorio(
+        @WebParam(name = "ruta", targetNamespace = "")
+        String ruta,
         @WebParam(name = "token", targetNamespace = "")
         String token);
 
