@@ -398,7 +398,7 @@ public class ServidorAplicacion {
                 
                 int idArchivoExistente = servidorBaseDatos.obtenerIdArchivoPorNombre(nombreArchivoDestino);
                 if (idArchivoExistente != -1) {
-                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);//TODO ojo compartidos
+                    servidorBaseDatos.eliminarArchivo(idArchivoExistente);
                     System.out.println("Archivo existente eliminado de la BD: " + nombreArchivoDestino);
                 }
             }

@@ -13,7 +13,7 @@ public class ServidorRMI {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
             while (interfaces.hasMoreElements()) {
                 NetworkInterface iface = interfaces.nextElement();
-                // Filtrar interfaces de loopback y que no estén activas
+                
                 if (iface.isLoopback() || !iface.isUp()) {
                     continue;
                 }
@@ -21,7 +21,7 @@ public class ServidorRMI {
                 Enumeration<InetAddress> addresses = iface.getInetAddresses();
                 while (addresses.hasMoreElements()) {
                     InetAddress addr = addresses.nextElement();
-                    // Obtener IPv4 no loopback
+                    
                     if (!addr.isLoopbackAddress() && addr.getHostAddress().indexOf(':') == -1) {
                         return addr.getHostAddress();
                     }
@@ -30,14 +30,13 @@ public class ServidorRMI {
         } catch (Exception e) {
             System.err.println("Error obteniendo IP local: " + e.getMessage());
         }
-        return "127.0.0.1"; // Fallback a localhost
+        return "127.0.0.1";
     }
     
     public static void main(String[] args) {
         String ipLocal = obtenerIPLocal();
         System.out.println("IP local detectada: " + ipLocal);
         
-        // Configurar propiedades del sistema para RMI
         System.setProperty("java.rmi.server.hostname", ipLocal);
         
         int puertoBase = 1099;

@@ -88,7 +88,6 @@ public class ServidorBaseDatos {
 
     public void eliminarArchivo(int idArchivo) throws SQLException {
         try (Connection conn = ConexionDB.getConnection()) {
-            // Iniciar transacción
             conn.setAutoCommit(false);
             
             try {

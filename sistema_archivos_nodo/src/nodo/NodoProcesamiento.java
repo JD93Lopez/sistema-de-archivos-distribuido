@@ -63,7 +63,6 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     private void ejecutarTarea(Tarea tarea) throws Exception {
-        // Thread.sleep(200);
         
         switch (tarea.getTipoTarea()) {
             case CREAR_DIRECTORIO:
@@ -139,10 +138,8 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
         try {
             Path rutaCompleta;
             if (ruta != null && !ruta.isEmpty()) {
-                // Si se proporciona ruta, usarla junto con el nombre
                 rutaCompleta = Paths.get(directorioRaiz, ruta, nombre);
             } else {
-                // Si no se proporciona ruta, usar solo el nombre (comportamiento anterior)
                 rutaCompleta = Paths.get(directorioRaiz, nombre);
             }
             

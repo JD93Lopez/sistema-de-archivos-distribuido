@@ -180,7 +180,6 @@ public class Main {
                 String nombre = requireParam(json, "nombre");
                 String token = requireParam(json, "token");
                 
-                // Ruta es opcional, si no se proporciona será null
                 String ruta = (String) json.get("ruta");
 
                 backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, ruta, token);
