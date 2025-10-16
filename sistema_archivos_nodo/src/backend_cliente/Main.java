@@ -10,18 +10,44 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import backend_cliente.generated.*;
+import javax.xml.ws.BindingProvider;
+import java.net.URL;
 
 public class Main {
 
     private static final backend_cliente.generated.ServicioSOAPImpl soapPort = createSoapPort();
 
     private static backend_cliente.generated.ServicioSOAPImpl createSoapPort() {
-        ServicioSOAPImplService service = new ServicioSOAPImplService();
-        backend_cliente.generated.ServicioSOAPImpl port = service.getServicioSOAPImplPort();
-        return port;
+        try {
+            ConfigManager config = ConfigManager.getInstance();
+            String soapUrl = config.getSoapServerUrl();
+            
+            System.out.println(" Conectando SOAP: " + soapUrl);
+            
+            // Crear el servicio con la URL configurada
+            URL wsdlURL = new URL(soapUrl + "?wsdl");
+            ServicioSOAPImplService service = new ServicioSOAPImplService(wsdlURL);
+            backend_cliente.generated.ServicioSOAPImpl port = service.getServicioSOAPImplPort();
+            
+            // Configurar la URL del endpoint
+            BindingProvider bindingProvider = (BindingProvider) port;
+            bindingProvider.getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, soapUrl);
+            
+            System.out.println(" Conexion SOAP configurada correctamente");
+            return port;
+        } catch (Exception e) {
+            System.err.println(" Error al configurar conexión SOAP: " + e.getMessage());
+            System.err.println("Verificar que el servidor esté ejecutándose en la URL configurada");
+            throw new RuntimeException("No se pudo conectar al servidor SOAP", e);
+        }
     }
 
     public static void main(String[] args) throws Exception {
+        System.out.println("INICIANDO BACKEND CLIENTE");
+        
+        // Mostrar configuración actual
+        ConfigManager.getInstance().printConfig();
+        
         HttpServer server = HttpServer.create(new InetSocketAddress(8081), 0);
         server.createContext("/registro", new RegistroHandler());
         server.createContext("/login", new LoginHandler());
@@ -34,7 +60,7 @@ public class Main {
         server.createContext("/espacio", new ConsultarEspacioHandler());
         server.setExecutor(null);
         server.start();
-        System.out.println("✅ Servicio REST iniciado en http://localhost:8081");
+        System.out.println(" Servicio REST iniciado en http://localhost:8081");
     }
 
     static String readBody(HttpExchange exchange) throws IOException {

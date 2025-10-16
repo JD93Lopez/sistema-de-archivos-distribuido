@@ -47,8 +47,8 @@ public class ServidorRMI {
                 Registry registry = LocateRegistry.createRegistry(puerto);
                 NodoProcesamiento nodo = new NodoProcesamiento();
                 registry.rebind("NodoDistribuido", nodo);
-                System.out.println("Nodo distribuido listo en " + ipLocal + ":" + puerto);
-                System.out.println("Para conectarse desde otra máquina use: rmi://" + ipLocal + ":" + puerto + "/NodoDistribuido");
+                System.out.println("Nodo en " + ipLocal + ":" + puerto);
+                System.out.println(ipLocal + ":" + puerto + "/NodoDistribuido");
                 return;
             } catch (Exception e) {
                 System.err.println("Puerto " + puerto + " ocupado. Intentando el siguiente...");
