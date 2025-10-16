@@ -10,76 +10,116 @@ import java.sql.SQLException;
 
 public class ServidorBaseDatos {
 
-    public void guardarArchivo(Archivo archivo, int idUsuario) throws SQLException {
-        String query = "INSERT INTO Archivo (nombre, ruta, tamano, fecha_crea, nodo, Directorio_idDirectorio, Directorio_User_idUser) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)";
-
+    public void guardarArchivo(Archivo archivo, int idUsuario, int numeroNodo, Integer numeroNodoRespaldo) throws SQLException {
+        // Primero verificar si el archivo ya existe
+        String queryVerificar = "SELECT idFile FROM Archivo WHERE nombre = ? AND ruta = ? AND Directorio_User_idUser = ?";
+        
         try (Connection conn = ConexionDB.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(query)) {
+             PreparedStatement stmtVerificar = conn.prepareStatement(queryVerificar)) {
             
-            String rutaDirectorio = archivo.getRuta();
-            int idDirectorio = obtenerIdDirectorioPorRuta(rutaDirectorio, idUsuario);
+            stmtVerificar.setString(1, archivo.getNombre());
+            stmtVerificar.setString(2, archivo.getRuta());
+            stmtVerificar.setInt(3, idUsuario);
             
-            if (idDirectorio == -1) {
-                idDirectorio = obtenerIdDirectorioRaiz(idUsuario);
-            }
-                
-            stmt.setString(1, archivo.getNombre());
-            stmt.setString(2, archivo.getRuta());
-            stmt.setLong(3, archivo.getContenido().length);
-            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-            stmt.setInt(5, 1); // Número de nodo temporal - se actualizará después
-            stmt.setInt(6, idDirectorio);
-            stmt.setInt(7, idUsuario);
+            ResultSet rs = stmtVerificar.executeQuery();
+            
+            if (rs.next()) {
+                // El archivo ya existe, actualizarlo
+                int idArchivo = rs.getInt("idFile");
+                actualizarArchivo(idArchivo, archivo, numeroNodo, numeroNodoRespaldo);
+                System.out.println("Archivo actualizado en la base de datos: " + archivo.getNombre() + 
+                                 " en nodo " + numeroNodo + 
+                                 (numeroNodoRespaldo != null ? " con respaldo en nodo " + numeroNodoRespaldo : ""));
+            } else {
+                // El archivo no existe, crearlo
+                String query = "INSERT INTO Archivo (nombre, ruta, tamano, fecha_crea, nodo, nodo_respaldo, Directorio_idDirectorio, Directorio_User_idUser) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-            stmt.executeUpdate();
-            System.out.println("Archivo guardado en la base de datos: " + archivo.getNombre());
+                try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                    
+                    String rutaDirectorio = archivo.getRuta();
+                    int idDirectorio = obtenerIdDirectorioPorRuta(rutaDirectorio, idUsuario);
+                    
+                    if (idDirectorio == -1) {
+                        idDirectorio = obtenerIdDirectorioRaiz(idUsuario);
+                    }
+                        
+                    stmt.setString(1, archivo.getNombre());
+                    stmt.setString(2, archivo.getRuta());
+                    stmt.setLong(3, archivo.getContenido().length);
+                    stmt.setDate(4, new java.sql.Date(System.currentTimeMillis()));
+                    stmt.setInt(5, numeroNodo);
+                    if (numeroNodoRespaldo != null) {
+                        stmt.setInt(6, numeroNodoRespaldo);
+                    } else {
+                        stmt.setNull(6, java.sql.Types.INTEGER);
+                    }
+                    stmt.setInt(7, idDirectorio);
+                    stmt.setInt(8, idUsuario);
+
+                    stmt.executeUpdate();
+                    System.out.println("Archivo guardado en la base de datos: " + archivo.getNombre() + 
+                                     " en nodo " + numeroNodo + 
+                                     (numeroNodoRespaldo != null ? " con respaldo en nodo " + numeroNodoRespaldo : ""));
+                }
+            }
         }
     }
 
-    public void guardarArchivoConNodos(Archivo archivo, int idUsuario, int numeroNodo, Integer numeroNodoRespaldo) throws SQLException {
-        String query = "INSERT INTO Archivo (nombre, ruta, tamano, fecha_crea, nodo, nodo_respaldo, Directorio_idDirectorio, Directorio_User_idUser) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
+    private void actualizarArchivo(int idArchivo, Archivo archivo, int numeroNodo, Integer numeroNodoRespaldo) throws SQLException {
+        String query = "UPDATE Archivo SET tamano = ?, fecha_crea = ?, nodo = ?, nodo_respaldo = ? WHERE idFile = ?";
+        
         try (Connection conn = ConexionDB.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(query)) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
             
-            String rutaDirectorio = archivo.getRuta();
-            int idDirectorio = obtenerIdDirectorioPorRuta(rutaDirectorio, idUsuario);
-            
-            if (idDirectorio == -1) {
-                idDirectorio = obtenerIdDirectorioRaiz(idUsuario);
-            }
-                
-            stmt.setString(1, archivo.getNombre());
-            stmt.setString(2, archivo.getRuta());
-            stmt.setLong(3, archivo.getContenido().length);
-            stmt.setDate(4, new java.sql.Date(System.currentTimeMillis()));
-            stmt.setInt(5, numeroNodo);
+            stmt.setLong(1, archivo.getContenido().length);
+            stmt.setDate(2, new java.sql.Date(System.currentTimeMillis()));
+            stmt.setInt(3, numeroNodo);
             if (numeroNodoRespaldo != null) {
-                stmt.setInt(6, numeroNodoRespaldo);
+                stmt.setInt(4, numeroNodoRespaldo);
             } else {
-                stmt.setNull(6, java.sql.Types.INTEGER);
+                stmt.setNull(4, java.sql.Types.INTEGER);
             }
-            stmt.setInt(7, idDirectorio);
-            stmt.setInt(8, idUsuario);
-
+            stmt.setInt(5, idArchivo);
+            
             stmt.executeUpdate();
-            System.out.println("Archivo guardado en la base de datos: " + archivo.getNombre() + 
-                             " en nodo " + numeroNodo + 
-                             (numeroNodoRespaldo != null ? " con respaldo en nodo " + numeroNodoRespaldo : ""));
         }
     }
 
     public void eliminarArchivo(int idArchivo) throws SQLException {
-        String query = "DELETE FROM Archivo WHERE idFile = ?";
-
-        try (Connection conn = ConexionDB.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setInt(1, idArchivo);
-            stmt.executeUpdate();
-            System.out.println("Archivo eliminado de la base de datos: " + idArchivo);
+        try (Connection conn = ConexionDB.getConnection()) {
+            // Iniciar transacción
+            conn.setAutoCommit(false);
+            
+            try {
+                String queryEliminarCompartir = "DELETE FROM Compartir WHERE Archivo_idFile = ?";
+                try (PreparedStatement stmtCompartir = conn.prepareStatement(queryEliminarCompartir)) {
+                    stmtCompartir.setInt(1, idArchivo);
+                    int filasCompartirEliminadas = stmtCompartir.executeUpdate();
+                    if (filasCompartirEliminadas > 0) {
+                        System.out.println("Eliminados " + filasCompartirEliminadas + " registros de compartir para archivo ID: " + idArchivo);
+                    }
+                }
+                
+                String queryEliminarArchivo = "DELETE FROM Archivo WHERE idFile = ?";
+                try (PreparedStatement stmtArchivo = conn.prepareStatement(queryEliminarArchivo)) {
+                    stmtArchivo.setInt(1, idArchivo);
+                    int filasArchivoEliminadas = stmtArchivo.executeUpdate();
+                    if (filasArchivoEliminadas > 0) {
+                        System.out.println("Archivo eliminado de la base de datos: " + idArchivo);
+                    } else {
+                        System.err.println("No se encontró el archivo con ID: " + idArchivo);
+                    }
+                }
+                
+                conn.commit();
+                
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         }
     }
 
@@ -109,12 +149,9 @@ public class ServidorBaseDatos {
         return archivos;
     }
 
-    /**
-     * Consulta archivos de usuario con información del nodo
-     */
-    public List<ArchivoConNodo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
+    public List<Archivo> consultarArchivosUsuarioConNodo(int idUsuario) throws SQLException {
         String query = "SELECT nombre, ruta, nodo, nodo_respaldo FROM Archivo WHERE Directorio_User_idUser = ?";
-        List<ArchivoConNodo> archivos = new ArrayList<>();
+        List<Archivo> archivos = new ArrayList<>();
 
         try (Connection conn = ConexionDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -123,12 +160,11 @@ public class ServidorBaseDatos {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                ArchivoConNodo archivo = new ArchivoConNodo(
-                    rs.getString("nombre"),
-                    rs.getString("ruta"),
-                    rs.getInt("nodo"),
-                    rs.getObject("nodo_respaldo") != null ? rs.getInt("nodo_respaldo") : null
-                );
+                Archivo archivo = new Archivo();
+                archivo.setNombre(rs.getString("nombre"));
+                archivo.setRuta(rs.getString("ruta"));
+                archivo.setNodo(rs.getInt("nodo"));
+                archivo.setNodoRespaldo(rs.getObject("nodo_respaldo") != null ? rs.getInt("nodo_respaldo") : null);
                 archivos.add(archivo);
             }
         }
@@ -430,6 +466,217 @@ public class ServidorBaseDatos {
                     null,
                     null
                 );
+            }
+        }
+        return null;
+    }
+
+    public void actualizarRutaArchivo(String nombreArchivo, String nuevaRuta, int idUsuario) throws SQLException {
+        String query = "UPDATE Archivo SET ruta = ? WHERE nombre = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nuevaRuta);
+            stmt.setString(2, nombreArchivo);
+            stmt.setInt(3, idUsuario);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Ruta del archivo actualizada en BD: " + nombreArchivo + " -> " + nuevaRuta);
+            } else {
+                System.err.println("No se pudo actualizar la ruta del archivo: " + nombreArchivo);
+            }
+        }
+    }
+
+    public void actualizarRutaYDirectorioArchivo(String nombreArchivo, String nuevaRuta, int idDirectorioDestino, int idUsuario) throws SQLException {
+        String query = "UPDATE Archivo SET ruta = ?, Directorio_idDirectorio = ? WHERE nombre = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nuevaRuta);
+            stmt.setInt(2, idDirectorioDestino);
+            stmt.setString(3, nombreArchivo);
+            stmt.setInt(4, idUsuario);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Ruta y directorio del archivo actualizados en BD: " + nombreArchivo + " -> " + nuevaRuta + " (DIR ID: " + idDirectorioDestino + ")");
+            } else {
+                System.err.println("No se pudo actualizar la ruta y directorio del archivo: " + nombreArchivo);
+            }
+        }
+    }
+
+    public void actualizarArchivoCompleto(String nombreArchivoOrigen, String nuevoNombre, String nuevaRuta, int idDirectorioDestino, int idUsuario) throws SQLException {
+        String query = "UPDATE Archivo SET nombre = ?, ruta = ?, Directorio_idDirectorio = ? WHERE nombre = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nuevoNombre);
+            stmt.setString(2, nuevaRuta);
+            stmt.setInt(3, idDirectorioDestino);
+            stmt.setString(4, nombreArchivoOrigen);
+            stmt.setInt(5, idUsuario);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Archivo actualizado completamente en BD: " + nombreArchivoOrigen + " -> " + nuevoNombre + " en " + nuevaRuta + " (DIR ID: " + idDirectorioDestino + ")");
+            } else {
+                System.err.println("No se pudo actualizar completamente el archivo: " + nombreArchivoOrigen);
+            }
+        }
+    }
+
+    public int obtenerIdArchivoPorNombreYRuta(String nombre, String ruta, int idUsuario) throws SQLException {
+        String query = "SELECT idFile FROM Archivo WHERE nombre = ? AND ruta = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nombre);
+            stmt.setString(2, ruta);
+            stmt.setInt(3, idUsuario);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("idFile");
+            }
+        }
+        return -1;
+    }
+
+    public void compartirArchivo(int idArchivo, int idPropietario, int idReceptor) throws SQLException {
+        String query = "INSERT INTO Compartir (Archivo_idFile, Propietario, Receptor) VALUES (?, ?, ?)";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, idArchivo);
+            stmt.setInt(2, idPropietario);
+            stmt.setInt(3, idReceptor);
+            
+            int filasAfectadas = stmt.executeUpdate();
+            if (filasAfectadas > 0) {
+                System.out.println("Archivo compartido registrado en BD: archivo ID " + idArchivo + 
+                                 " de usuario " + idPropietario + " a usuario " + idReceptor);
+            } else {
+                System.err.println("No se pudo registrar el compartir del archivo");
+            }
+        }
+    }
+
+    public Archivo buscarArchivoPorNombreYRuta(String nombre, String ruta, int idUsuario) throws SQLException {
+
+        String nombreUsuario = obtenerNombreUsuario(idUsuario);
+        String rutaCompleta;
+        
+        if (ruta != null && !ruta.isEmpty()) {
+            if (ruta.startsWith("/")) {
+                
+                if (!ruta.startsWith("/" + nombreUsuario)) {
+                    rutaCompleta = "/" + nombreUsuario + ruta;
+                } else {
+                    rutaCompleta = ruta;
+                }
+            } else {
+                
+                rutaCompleta = "/" + nombreUsuario + "/" + ruta;
+            }
+        } else {
+            rutaCompleta = "/" + nombreUsuario;
+        }
+        
+        String query = "SELECT nombre, ruta, nodo, nodo_respaldo FROM Archivo WHERE nombre = ? AND ruta = ? AND Directorio_User_idUser = ?";
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nombre);
+            stmt.setString(2, rutaCompleta);
+            stmt.setInt(3, idUsuario);
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                Archivo archivo = new Archivo();
+                archivo.setNombre(rs.getString("nombre"));
+                archivo.setRuta(rs.getString("ruta"));
+                archivo.setNodo(rs.getInt("nodo"));
+                archivo.setNodoRespaldo(rs.getObject("nodo_respaldo", Integer.class));
+                
+                return archivo;
+            }
+        }
+        return null;
+    }
+
+    public Archivo buscarArchivoCompartido(String nombre, String ruta, int idUsuario) throws SQLException {
+
+        String query = "SELECT a.nombre, a.ruta, a.nodo, a.nodo_respaldo " +
+                      "FROM Archivo a " +
+                      "INNER JOIN Compartir c ON a.idFile = c.Archivo_idFile " +
+                      "WHERE a.nombre = ? AND c.Receptor = ?";
+        
+        if (ruta != null && !ruta.isEmpty()) {
+            query += " AND a.ruta = ?";
+        }
+        
+        try (Connection conn = ConexionDB.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setString(1, nombre);
+            stmt.setInt(2, idUsuario);
+            
+            if (ruta != null && !ruta.isEmpty()) {
+                
+                stmt.setString(3, ruta);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    Archivo archivo = new Archivo();
+                    archivo.setNombre(rs.getString("nombre"));
+                    archivo.setRuta(rs.getString("ruta"));
+                    archivo.setNodo(rs.getInt("nodo"));
+                    archivo.setNodoRespaldo(rs.getObject("nodo_respaldo", Integer.class));
+                    
+                    return archivo;
+                }
+                
+                String queryPatron = "SELECT a.nombre, a.ruta, a.nodo, a.nodo_respaldo " +
+                                   "FROM Archivo a " +
+                                   "INNER JOIN Compartir c ON a.idFile = c.Archivo_idFile " +
+                                   "WHERE a.nombre = ? AND c.Receptor = ? AND a.ruta LIKE ?";
+                
+                try (PreparedStatement stmtPatron = conn.prepareStatement(queryPatron)) {
+                    stmtPatron.setString(1, nombre);
+                    stmtPatron.setInt(2, idUsuario);
+                    stmtPatron.setString(3, "%" + ruta + "%");
+                    
+                    ResultSet rsPatron = stmtPatron.executeQuery();
+                    if (rsPatron.next()) {
+                        Archivo archivo = new Archivo();
+                        archivo.setNombre(rsPatron.getString("nombre"));
+                        archivo.setRuta(rsPatron.getString("ruta"));
+                        archivo.setNodo(rsPatron.getInt("nodo"));
+                        archivo.setNodoRespaldo(rsPatron.getObject("nodo_respaldo", Integer.class));
+                        
+                        return archivo;
+                    }
+                }
+            } else {
+                
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    Archivo archivo = new Archivo();
+                    archivo.setNombre(rs.getString("nombre"));
+                    archivo.setRuta(rs.getString("ruta"));
+                    archivo.setNodo(rs.getInt("nodo"));
+                    archivo.setNodoRespaldo(rs.getObject("nodo_respaldo", Integer.class));
+                    
+                    return archivo;
+                }
             }
         }
         return null;

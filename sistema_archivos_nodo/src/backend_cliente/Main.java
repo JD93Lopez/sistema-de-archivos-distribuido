@@ -175,19 +175,15 @@ public class Main {
     static class DescargarArchivoHandler implements HttpHandler {
         public void handle(HttpExchange exchange) throws IOException {
             try {
-                requireMethod(exchange, "GET");
-                String query = exchange.getRequestURI().getQuery();
-                String nombre = getQueryParam(query, "nombre");
-                String token = getQueryParam(query, "token");
-                if (nombre == null || nombre.isEmpty()) {
-                    throw new IllegalArgumentException("Falta parámetro 'nombre'");
-                }
-                if (token == null || token.isEmpty()) {
-                    token = getTokenFromAuthHeader(exchange);
-                    if (token == null) throw new IllegalArgumentException("Falta token");
-                }
+                requireMethod(exchange, "POST");
+                Map<String, Object> json = JsonParser.parse(readBody(exchange));
+                String nombre = requireParam(json, "nombre");
+                String token = requireParam(json, "token");
+                
+                // Ruta es opcional, si no se proporciona será null
+                String ruta = (String) json.get("ruta");
 
-                backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, token);
+                backend_cliente.generated.Archivo archivo = soapPort.descargarArchivo(nombre, ruta, token);
                 sendJsonResponse(exchange, 200, archivoToString(archivo));
             } catch (Exception e) {
                 sendErrorResponse(exchange, 400, e.getMessage());
@@ -227,17 +223,10 @@ public class Main {
     static class EliminarArchivoHandler implements HttpHandler {
         public void handle(HttpExchange exchange) throws IOException {
             try {
-                requireMethod(exchange, "DELETE");
-                String query = exchange.getRequestURI().getQuery();
-                String nombre = getQueryParam(query, "nombre");
-                String token = getQueryParam(query, "token");
-                if (nombre == null || nombre.isEmpty()) {
-                    throw new IllegalArgumentException("Falta parámetro 'nombre'");
-                }
-                if (token == null || token.isEmpty()) {
-                    token = getTokenFromAuthHeader(exchange);
-                    if (token == null) throw new IllegalArgumentException("Falta token");
-                }
+                requireMethod(exchange, "POST");
+                Map<String, Object> json = JsonParser.parse(readBody(exchange));
+                String nombre = requireParam(json, "nombre");
+                String token = requireParam(json, "token");
 
                 soapPort.eliminarArchivo(nombre, token);
                 Map<String, Object> responseMap = new HashMap<>();

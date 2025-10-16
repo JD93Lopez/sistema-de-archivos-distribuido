@@ -44,8 +44,8 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
                     try {
                         Tarea tarea = colaTareas.take();
                         tareasEjecutandose.incrementAndGet();
-                        System.out.println("Procesando tarea: " + tarea.getDescripcion() + " (prioridad: " + tarea.getPrioridad() + ") en hilo: " + Thread.currentThread().getName());
-                        System.out.println("Tareas ejecutándose: " + tareasEjecutandose.get() + ", Tareas pendientes: " + colaTareas.size());
+                        System.out.println("Procesando tarea: " + tarea.getDescripcion() + ") en hilo: " + Thread.currentThread().getName());
+                        System.out.println("Tareas ejecutandose: " + tareasEjecutandose.get() + ", Tareas pendientes: " + colaTareas.size());
                         ejecutarTarea(tarea);
                         System.out.println("Tarea completada: " + tarea.getDescripcion());
                         tareasEjecutandose.decrementAndGet();
@@ -63,7 +63,7 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     private void ejecutarTarea(Tarea tarea) throws Exception {
-        Thread.sleep(200);
+        // Thread.sleep(200);
         
         switch (tarea.getTipoTarea()) {
             case CREAR_DIRECTORIO:
@@ -84,16 +84,30 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
             case MOVER:
                 Path rutaOrigen = Paths.get(directorioRaiz, tarea.getRutaOrigen());
                 Path rutaDestino = Paths.get(directorioRaiz, tarea.getRutaDestino());
-                System.out.println("Archivo movido de " + rutaOrigen + " a " + rutaDestino);
+                
+                if (Files.exists(rutaOrigen)) {
+                    Files.createDirectories(rutaDestino.getParent());
+                    Files.move(rutaOrigen, rutaDestino);
+                    System.out.println("Archivo físicamente movido de " + rutaOrigen + " a " + rutaDestino);
+                } else {
+                    System.err.println("El archivo origen no existe: " + rutaOrigen);
+                }
                 break;
                 
             case ELIMINAR:
                 Path rutaEliminar = Paths.get(directorioRaiz, tarea.getNombreArchivo());
-                System.out.println("Archivo eliminado: " + rutaEliminar);
+                
+                if (Files.exists(rutaEliminar)) {
+                    Files.delete(rutaEliminar);
+                    System.out.println("Archivo físicamente eliminado: " + rutaEliminar);
+                } else {
+                    System.err.println("El archivo a eliminar no existe: " + rutaEliminar);
+                }
                 break;
                 
             case COMPARTIR:
-                System.out.println("Compartiendo archivo '" + tarea.getArchivo().getNombre() + "' con el usuario " + tarea.getUsuario().getNombre());
+                // System.out.println("Procesando compartir archivo '" + tarea.getArchivo().getNombre() + 
+                //                  "' con el usuario " + tarea.getUsuario().getNombre());
                 break;
                 
             default:
@@ -121,9 +135,17 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
     }
 
     @Override
-    public Archivo leerArchivo(String nombre) throws java.rmi.RemoteException {
+    public Archivo leerArchivo(String nombre, String ruta) throws java.rmi.RemoteException {
         try {
-            Path rutaCompleta = Paths.get(directorioRaiz, nombre);
+            Path rutaCompleta;
+            if (ruta != null && !ruta.isEmpty()) {
+                // Si se proporciona ruta, usarla junto con el nombre
+                rutaCompleta = Paths.get(directorioRaiz, ruta, nombre);
+            } else {
+                // Si no se proporciona ruta, usar solo el nombre (comportamiento anterior)
+                rutaCompleta = Paths.get(directorioRaiz, nombre);
+            }
+            
             System.out.println("Leyendo archivo desde: " + rutaCompleta);
             
             if (!Files.exists(rutaCompleta)) {
@@ -151,16 +173,30 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
 
     @Override
     public void moverArchivo(String origen, String destino) throws java.rmi.RemoteException {
+        Tarea tarea = new Tarea("Mover archivo: " + origen + " -> " + destino, 2);
+        tarea.setTipoTarea(TipoSolicitud.MOVER);
+        tarea.setRutaOrigen(origen);
+        tarea.setRutaDestino(destino);
+        colaTareas.offer(tarea);
         System.out.println("Tarea de mover archivo encolada: " + origen + " -> " + destino);
     }
 
     @Override
     public void eliminarArchivo(String nombre) throws java.rmi.RemoteException {
+        Tarea tarea = new Tarea("Eliminar archivo: " + nombre, 2);
+        tarea.setTipoTarea(TipoSolicitud.ELIMINAR);
+        tarea.setNombreArchivo(nombre);
+        colaTareas.offer(tarea);
         System.out.println("Tarea de eliminar archivo encolada: " + nombre);
     }
 
     @Override
     public void compartirArchivo(Archivo archivo, Usuario usuario) throws java.rmi.RemoteException {
+        Tarea tarea = new Tarea("Compartir archivo: " + archivo.getNombre() + " con " + usuario.getNombre(), 2);
+        tarea.setTipoTarea(TipoSolicitud.COMPARTIR);
+        tarea.setArchivo(archivo);
+        tarea.setUsuario(usuario);
+        colaTareas.offer(tarea);
         System.out.println("Tarea de compartir archivo encolada: " + archivo.getNombre());
     }
 

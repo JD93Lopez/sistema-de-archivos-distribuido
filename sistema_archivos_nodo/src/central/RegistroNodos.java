@@ -122,28 +122,39 @@ public class RegistroNodos {
     }
     
     private InfoNodo obtenerNodoMasLibre() {
-        InfoNodo mejorNodo = null;
+        List<InfoNodo> mejoresNodos = new ArrayList<>();
         double mejorPuntaje = -1;
         
         for (InfoNodo nodo : infoNodos) {
             try {
                 double puntaje = nodo.getPuntajeEficiencia();
-                // System.out.println("Nodo " + nodo.getNumeroNodo() + 
-                //                  " (" + nodo.getDireccion() + 
-                //                  ") - Puntaje: " + String.format("%.2f", puntaje) +
-                //                  " - " + nodo.getMetricas());
+                System.out.println("Nodo " + nodo.getNumeroNodo() + 
+                                 " (" + nodo.getDireccion() + 
+                                 ") - Puntaje: " + String.format("%.2f", puntaje) +
+                                 " - " + nodo.getMetricas());
                 
                 if (puntaje > mejorPuntaje) {
                     mejorPuntaje = puntaje;
-                    mejorNodo = nodo;
+                    mejoresNodos.clear();
+                    mejoresNodos.add(nodo);
+                } else if (puntaje == mejorPuntaje) {
+                    mejoresNodos.add(nodo);
                 }
             } catch (Exception e) {
                 System.err.println("Error al evaluar nodo " + nodo.getNumeroNodo() + ": " + e.getMessage());
-
             }
         }
         
-        return mejorNodo;
+        if (mejoresNodos.isEmpty()) {
+            return null;
+        }
+        
+        if (mejoresNodos.size() > 1) {
+            int indiceAleatorio = (int) (Math.random() * mejoresNodos.size());
+            return mejoresNodos.get(indiceAleatorio);
+        }
+        
+        return mejoresNodos.get(0);
     }
 
     public InfoNodo obtenerNodoRespaldo(int numeroNodoPrincipal) {
@@ -184,4 +195,5 @@ public class RegistroNodos {
         }
         return new ArrayList<>(infoNodos);
     }
+    
 }

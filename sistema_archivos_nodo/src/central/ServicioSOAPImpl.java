@@ -80,10 +80,11 @@ public class ServicioSOAPImpl implements ServicioSOAP {
 
     @WebMethod
     public Archivo descargarArchivo(@WebParam(name = "nombre") String nombre, 
+                                  @WebParam(name = "ruta") String ruta,
                                   @WebParam(name = "token") String token) {
         int userId = validarToken(token);
-        System.out.println("Descargar archivo: " + nombre + " (Usuario: " + userId + ")");
-        Archivo archivo = servidorAplicacion.descargarArchivo(nombre, userId);
+        System.out.println("Descargar archivo: " + nombre + " en ruta: " + ruta + " (Usuario: " + userId + ")");
+        Archivo archivo = servidorAplicacion.descargarArchivo(nombre, ruta, userId);
         if (archivo != null) {
             archivo.setIdUsuario(userId);
         }
