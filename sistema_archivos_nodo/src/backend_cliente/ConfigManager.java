@@ -5,7 +5,7 @@ import java.util.Properties;
 
 public class ConfigManager {
     private static final String CONFIG_FILE = "config.properties";
-    private static final String DEFAULT_SOAP_URL = "http://10.152.164.51:8080/ServicioSOAP";
+    private static final String DEFAULT_SOAP_URL = "http://10.152.190.35:8080/ServicioSOAP";
     
     private Properties properties;
     private static ConfigManager instance;
