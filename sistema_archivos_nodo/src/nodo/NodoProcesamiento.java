@@ -25,7 +25,7 @@ public class NodoProcesamiento extends UnicastRemoteObject implements InterfazRM
 
     public NodoProcesamiento() throws Exception {
         super();
-        this.directorioRaiz = "C:\\Users\\juand\\Desktop\\Code\\Distribuidos\\sistema-de-archivos-distribuido\\sistema_archivos_nodo\\src\\out\\almacenamiento";
+        this.directorioRaiz = "/root/sistema-de-archivos-distribuido/sistema_archivos_nodo/src/out/almacenamiento/";
         this.poolHilos = Executors.newFixedThreadPool(NUMERO_HILOS);
         this.colaTareas = new PriorityBlockingQueue<>(100, Comparator.comparingInt(Tarea::getPrioridad).reversed());
         
