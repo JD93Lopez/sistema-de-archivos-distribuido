@@ -11,7 +11,8 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class RegistroNodos {
-    private static final String ARCHIVO_CONFIG = "C:\\Users\\juand\\Desktop\\Code\\Distribuidos\\sistema-de-archivos-distribuido\\sistema_archivos_nodo\\nodos.config";
+    private static final String ARCHIVO_CONFIG = "C:\\Users\\juand\\Desktop\\Code\\Distribuidos\\sistema-de-archivos-distribuido\\sistema_archivos_nodo\\n" + //
+                "odos.config";
     
     private List<InterfazRMI> nodosActivos = new ArrayList<>();
     private List<InfoNodo> infoNodos = new ArrayList<>();
@@ -50,10 +51,6 @@ public class RegistroNodos {
             cargarConfiguracion();
         }
         
-        // Configurar propiedades del sistema para RMI distribuido
-        System.setProperty("java.net.preferIPv4Stack", "true");
-        System.setProperty("java.rmi.server.useCodebaseOnly", "false");
-        
         List<InterfazRMI> nuevosNodos = new ArrayList<>();
         List<InfoNodo> nuevosInfoNodos = new ArrayList<>();
         
@@ -66,24 +63,11 @@ public class RegistroNodos {
                     continue;
                 }
                 
-                String host = partes[0].trim();
-                int puerto = Integer.parseInt(partes[1].trim());
-                
-                System.out.println("Intentando conectar a: " + host + ":" + puerto);
-                
-                // Configurar timeout para conexiones RMI
-                System.setProperty("sun.rmi.transport.tcp.responseTimeout", "10000");
-                System.setProperty("sun.rmi.transport.tcp.handshakeTimeout", "10000");
+                String host = partes[0];
+                int puerto = Integer.parseInt(partes[1]);
                 
                 Registry registry = LocateRegistry.getRegistry(host, puerto);
-                
-                // Primero verificar que el registro esté disponible
-                String[] servicios = registry.list();
-                System.out.println("Servicios disponibles en " + direccion + ": " + java.util.Arrays.toString(servicios));
-                
                 InterfazRMI nodo = (InterfazRMI) registry.lookup("NodoDistribuido");
-                
-                // Hacer ping para verificar conectividad
                 nodo.ping();
                 
                 int numeroNodo = i + 1;
@@ -91,27 +75,14 @@ public class RegistroNodos {
                 
                 nuevosNodos.add(nodo);
                 nuevosInfoNodos.add(infoNodo);
-                System.out.println("✓ Nodo " + numeroNodo + " conectado exitosamente: " + direccion);
-                
-            } catch (java.rmi.ConnectException e) {
-                System.err.println("✗ Error de conexión RMI a " + direccion + ": " + e.getMessage());
-                System.err.println("  Verificar que el nodo esté ejecutándose y sea accesible desde esta máquina");
-            } catch (java.rmi.NotBoundException e) {
-                System.err.println("✗ Servicio 'NodoDistribuido' no encontrado en " + direccion);
-                System.err.println("  Verificar que el nodo haya registrado el servicio correctamente");
-            } catch (NumberFormatException e) {
-                System.err.println("✗ Puerto inválido en configuración: " + direccion);
+                System.out.println("Nodo " + numeroNodo + " conectado: " + direccion);
             } catch (Exception e) {
-                System.err.println("✗ Error general conectando a " + direccion + ": " + e.getClass().getSimpleName() + " - " + e.getMessage());
-                e.printStackTrace();
+                System.err.println("No se pudo conectar al nodo: " + direccion + " - " + e.getMessage());
             }
         }
-        
         this.nodosActivos = nuevosNodos;
         this.infoNodos = nuevosInfoNodos;
         this.indiceRoundRobin.set(0);
-        
-        System.out.println("Resumen de conectividad: " + nuevosNodos.size() + "/" + direccionesNodos.size() + " nodos conectados");
     }
 
     public InterfazRMI obtenerNodoParaTrabajo() {
